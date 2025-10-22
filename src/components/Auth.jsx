@@ -19,7 +19,8 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import Dashboard from './Dashboard';
-import FirebaseDiagnostic from './FirebaseDiagnostic';
+import Toast, { showToast } from './Toast';
+import Modal from './Modal';
 import {
   Heart,
   Smartphone,
@@ -29,9 +30,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
-// Constantes de Rate Limiting
 const MAX_ATTEMPTS = 3;
-const COOLDOWN_TIME = 60000; // 1 minuto
+const COOLDOWN_TIME = 60000;
 const ATTEMPT_STORAGE_KEY = 'phone_auth_attempts';
 
 export default function Auth() {
@@ -39,11 +39,9 @@ export default function Auth() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
 
-  // Estados da UI
   const [step, setStep] = useState('choice');
   const [authMethod, setAuthMethod] = useState('email');
 
-  // Dados do formulário
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,34 +49,32 @@ export default function Auth() {
   const [relationshipStart, setRelationshipStart] = useState('');
   const [partnerIdentifier, setPartnerIdentifier] = useState('');
 
-  // Estados para autenticação por telefone
   const [verificationCode, setVerificationCode] = useState('');
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [recaptchaVerifier, setRecaptchaVerifier] = useState(null);
-  const [recaptchaWidgetId, setRecaptchaWidgetId] = useState(null);
 
-  // Estados para Rate Limiting e Validação
   const [phoneError, setPhoneError] = useState('');
   const [isBlocked, setIsBlocked] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
 
+  const [modal, setModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
   const clearRecaptcha = () => {
     if (recaptchaVerifier) {
       try {
-        // Verificar se o widget ainda existe no DOM
         const container = document.getElementById('recaptcha-container');
         if (container && container.children.length > 0) {
           recaptchaVerifier.clear();
         }
       } catch (error) {
-        // Ignorar erros ao limpar, apenas registrar
-        console.warn(
-          'Aviso ao limpar reCAPTCHA (pode ser ignorado):',
-          error.code
-        );
+        // Ignorar erros ao limpar
       } finally {
         setRecaptchaVerifier(null);
-        setRecaptchaWidgetId(null);
       }
     }
   };
@@ -99,85 +95,65 @@ export default function Auth() {
   }, []);
 
   useEffect(() => {
-    // Verificar se está bloqueado por rate limiting
     checkRateLimit();
 
-    // Limpar reCAPTCHA antigo ao mudar de tela/método
-    if (authMethod !== 'phone' || (step !== 'signup' && step !== 'login')) {
+    if (authMethod !== 'phone' || step !== 'signup') {
       clearRecaptcha();
       return;
     }
 
-    // Inicializar reCAPTCHA quando necessário
     if (
       authMethod === 'phone' &&
-      (step === 'signup' || step === 'login') &&
+      step === 'signup' &&
       !recaptchaVerifier &&
       !isBlocked
     ) {
-      // Aguardar um pouco para garantir que o DOM está pronto
       const timer = setTimeout(() => {
         try {
           const container = document.getElementById('recaptcha-container');
-          if (!container) {
-            console.error('Container do reCAPTCHA não encontrado');
-            return;
-          }
+          if (!container) return;
 
-          // Limpar container antes de inicializar
           container.innerHTML = '';
-
           auth.languageCode = 'pt-BR';
 
           const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'normal', // Mudado de 'invisible' para 'normal' - mais confiável
-            callback: (response) => {
-              console.log('reCAPTCHA resolvido:', response);
+            size: 'normal',
+            callback: () => {
+              setPhoneError('');
             },
             'expired-callback': () => {
-              console.log('reCAPTCHA expirado - limpando');
               clearRecaptcha();
-              setPhoneError('reCAPTCHA expirado. Tente novamente.');
+              setPhoneError('Verificação expirada. Tente novamente.');
             },
-            'error-callback': (error) => {
-              console.error('Erro no reCAPTCHA:', error);
+            'error-callback': () => {
               clearRecaptcha();
-              setPhoneError('Erro no reCAPTCHA. Recarregue a página.');
+              setPhoneError('Erro na verificação. Recarregue a página.');
             },
           });
 
           verifier
             .render()
-            .then((widgetId) => {
-              console.log('reCAPTCHA renderizado com ID:', widgetId);
+            .then(() => {
               setRecaptchaVerifier(verifier);
-              setRecaptchaWidgetId(widgetId);
             })
-            .catch((error) => {
-              console.error('Erro ao renderizar reCAPTCHA:', error);
-              setPhoneError(
-                'Erro ao inicializar verificação. Recarregue a página.'
-              );
+            .catch(() => {
+              setPhoneError('Erro ao inicializar verificação.');
             });
         } catch (error) {
-          console.error('Erro ao inicializar reCAPTCHA:', error);
-          setPhoneError('Erro ao inicializar verificação. Tente novamente.');
+          setPhoneError('Erro ao inicializar verificação.');
         }
       }, 100);
 
-      return () => {
-        clearTimeout(timer);
-      };
+      return () => clearTimeout(timer);
     }
 
     return () => {
-      if (authMethod !== 'phone' || (step !== 'signup' && step !== 'login')) {
+      if (authMethod !== 'phone' || step !== 'signup') {
         clearRecaptcha();
       }
     };
   }, [authMethod, step, isBlocked]);
 
-  // Timer para countdown do bloqueio
   useEffect(() => {
     if (remainingTime > 0) {
       const timer = setTimeout(() => {
@@ -249,65 +225,65 @@ export default function Auth() {
       '16',
       '17',
       '18',
-      '19', // SP
+      '19',
       '21',
       '22',
-      '24', // RJ
+      '24',
       '27',
-      '28', // ES
+      '28',
       '31',
       '32',
       '33',
       '34',
       '35',
       '37',
-      '38', // MG
+      '38',
       '41',
       '42',
       '43',
       '44',
       '45',
-      '46', // PR
+      '46',
       '47',
       '48',
-      '49', // SC
+      '49',
       '51',
       '53',
       '54',
-      '55', // RS
-      '61', // DF
+      '55',
+      '61',
       '62',
-      '64', // GO
-      '63', // TO
+      '63',
+      '64',
       '65',
-      '66', // MT
-      '67', // MS
-      '68', // AC
-      '69', // RO
+      '66',
+      '67',
+      '68',
+      '69',
       '71',
       '73',
       '74',
       '75',
-      '77', // BA
-      '79', // SE
+      '77',
+      '79',
       '81',
-      '87', // PE
-      '82', // AL
-      '83', // PB
-      '84', // RN
+      '82',
+      '83',
+      '84',
       '85',
-      '88', // CE
       '86',
-      '89', // PI
+      '87',
+      '88',
+      '89',
       '91',
-      '93',
-      '94', // PA
       '92',
-      '97', // AM
-      '95', // RR
-      '96', // AP
+      '93',
+      '94',
+      '95',
+      '96',
+      '97',
       '98',
-      '99', // MA
+      '99',
     ];
 
     const ddd = cleaned.substring(0, 2);
@@ -349,7 +325,7 @@ export default function Auth() {
         setProfile(userDoc.data());
       }
     } catch (error) {
-      console.error('Erro ao carregar perfil:', error);
+      showToast('Erro ao carregar perfil', 'error');
     }
   };
 
@@ -373,9 +349,15 @@ export default function Auth() {
         createdAt: new Date().toISOString(),
       });
 
-      alert('Conta criada! Agora você pode vincular com seu parceiro.');
+      showToast('Conta criada com sucesso! 💝', 'success');
     } catch (error) {
-      alert('Erro ao criar conta: ' + error.message);
+      let errorMessage = 'Erro ao criar conta';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Este email já está em uso';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Senha muito fraca. Use pelo menos 6 caracteres';
+      }
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -383,21 +365,20 @@ export default function Auth() {
     e.preventDefault();
 
     if (isBlocked) {
-      alert(
-        `Aguarde ${Math.ceil(remainingTime / 1000)}s antes de tentar novamente.`
+      showToast(
+        `Aguarde ${Math.ceil(remainingTime / 1000)}s antes de tentar novamente`,
+        'warning'
       );
       return;
     }
 
     if (!confirmationResult) {
-      // Validar telefone
       const validationError = validateBrazilPhone(phoneNumber);
       if (validationError) {
         setPhoneError(validationError);
         return;
       }
 
-      // Verificar se reCAPTCHA está pronto
       if (!recaptchaVerifier) {
         setPhoneError('Aguarde a inicialização da verificação...');
         return;
@@ -407,12 +388,6 @@ export default function Auth() {
         setPhoneError('Enviando código SMS...');
         const formattedPhone = `+55${phoneNumber}`;
 
-        console.log('=== TENTATIVA DE ENVIO DE SMS ===');
-        console.log('Telefone formatado:', formattedPhone);
-        console.log('reCAPTCHA verificador existe:', !!recaptchaVerifier);
-        console.log('Firebase Auth configurado:', !!auth);
-        console.log('Project ID:', auth.app.options.projectId);
-
         setConfirmationResult(null);
         const confirmation = await signInWithPhoneNumber(
           auth,
@@ -420,69 +395,54 @@ export default function Auth() {
           recaptchaVerifier
         );
 
-        console.log('✅ SMS enviado com sucesso!');
-        console.log('Confirmation result:', confirmation);
-
         setConfirmationResult(confirmation);
         setPhoneError('');
-        alert(
-          '✅ Código enviado para seu telefone! Verifique suas mensagens SMS.'
-        );
+        showToast('Código enviado para seu telefone! 📱', 'success');
         incrementAttempts();
       } catch (error) {
-        console.error('Erro completo:', error);
-        console.error('Código do erro:', error.code);
-        console.error('Mensagem:', error.message);
-
-        let errorMessage = 'Erro ao enviar código. ';
+        let errorMessage = 'Erro ao enviar código';
 
         if (error.code === 'auth/quota-exceeded') {
           errorMessage =
-            '❌ Limite de SMS atingido para hoje. Tente novamente amanhã ou use autenticação por email.';
+            'Limite de SMS atingido. Tente novamente amanhã ou use email';
         } else if (error.code === 'auth/invalid-phone-number') {
-          errorMessage =
-            'Formato de telefone inválido. Use apenas números com DDD.';
+          errorMessage = 'Formato de telefone inválido';
           setPhoneError('Formato de telefone inválido');
         } else if (error.code === 'auth/too-many-requests') {
-          errorMessage = 'Muitas tentativas. Aguarde alguns minutos.';
+          errorMessage = 'Muitas tentativas. Aguarde alguns minutos';
           setIsBlocked(true);
           setRemainingTime(COOLDOWN_TIME);
-        } else if (error.code === 'auth/internal-error') {
-          errorMessage = '❌ Erro interno do Firebase. Possíveis causas:\n\n';
-          errorMessage +=
-            '1. Phone Authentication não está habilitado no Firebase Console\n';
-          errorMessage += '2. Domínio não autorizado (adicione localhost)\n';
-          errorMessage += '3. Credenciais do Firebase incorretas\n\n';
-          errorMessage += 'Use autenticação por email enquanto isso.';
         } else if (error.code === 'auth/captcha-check-failed') {
           errorMessage =
-            '❌ Verificação reCAPTCHA falhou. Por favor, resolva o reCAPTCHA e tente novamente.';
+            'Verificação reCAPTCHA falhou. Resolva o desafio e tente novamente';
           clearRecaptcha();
-        } else if (error.message.includes('Timeout')) {
-          errorMessage = '⏱️ Timeout ao enviar SMS. Possíveis causas:\n\n';
-          errorMessage += '1. O número pode estar incorreto\n';
-          errorMessage += '2. O serviço de SMS do Firebase pode estar lento\n';
-          errorMessage += '3. Problemas de conectividade\n\n';
-          errorMessage += 'Tente novamente ou use autenticação por email.';
-        } else {
-          errorMessage += error.message;
         }
 
-        setPhoneError('Falha ao enviar SMS. Veja os detalhes.');
-        alert(errorMessage);
+        setPhoneError('Falha ao enviar SMS');
+        showToast(errorMessage, 'error', 5000);
         incrementAttempts();
-
-        // Limpar e reinicializar reCAPTCHA
         clearRecaptcha();
       }
     } else {
       try {
         const result = await confirmationResult.confirm(verificationCode);
 
-        await setDoc(doc(db, 'users', result.user.uid), {
+        // Criar email temporário para o Firebase Auth
+        const tempEmail = `${phoneNumber.replace(/\D/g, '')}@noo.us.temp`;
+
+        // Criar usuário no Auth com email temporário e senha
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          tempEmail,
+          password
+        );
+
+        // Salvar dados no Firestore
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
           name,
           email: '',
           phoneNumber: result.user.phoneNumber,
+          password: password,
           relationshipStart,
           partnerId: null,
           partnerName: null,
@@ -491,21 +451,20 @@ export default function Auth() {
         });
 
         localStorage.removeItem(ATTEMPT_STORAGE_KEY);
-        alert('Conta criada! Agora você pode vincular com seu parceiro.');
+        showToast('Conta criada com sucesso! 💝', 'success');
       } catch (error) {
-        console.error('Erro ao verificar código:', error);
-        let errorMessage = 'Código inválido. ';
+        let errorMessage = 'Código inválido';
 
         if (error.code === 'auth/invalid-verification-code') {
-          errorMessage = 'Código inválido. Verifique e tente novamente.';
+          errorMessage = 'Código inválido. Verifique e tente novamente';
         } else if (error.code === 'auth/code-expired') {
-          errorMessage = 'Código expirado. Solicite um novo código.';
+          errorMessage = 'Código expirado. Solicite um novo código';
           setConfirmationResult(null);
-        } else {
-          errorMessage += error.message;
+        } else if (error.code === 'auth/email-already-in-use') {
+          errorMessage = 'Este telefone já está cadastrado. Faça login';
         }
 
-        alert(errorMessage);
+        showToast(errorMessage, 'error');
       }
     }
   };
@@ -514,91 +473,88 @@ export default function Auth() {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      showToast('Bem-vindo de volta! 💕', 'success');
     } catch (error) {
-      alert('Erro ao fazer login: ' + error.message);
+      let errorMessage = 'Erro ao fazer login';
+      if (
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/wrong-password'
+      ) {
+        errorMessage = 'Email ou senha incorretos';
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'Credenciais inválidas';
+      }
+      showToast(errorMessage, 'error');
     }
   };
 
   const handlePhoneLogin = async (e) => {
     e.preventDefault();
 
-    if (isBlocked) {
-      alert(
-        `Aguarde ${Math.ceil(remainingTime / 1000)}s antes de tentar novamente.`
-      );
-      return;
-    }
-
-    if (!confirmationResult) {
+    try {
       const validationError = validateBrazilPhone(phoneNumber);
       if (validationError) {
         setPhoneError(validationError);
         return;
       }
 
-      // Verificar se reCAPTCHA está pronto
-      if (!recaptchaVerifier) {
-        setPhoneError('Aguarde a inicialização da verificação...');
+      const formattedPhone = `+55${phoneNumber}`;
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('phoneNumber', '==', formattedPhone));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        showToast('Telefone não cadastrado', 'error');
         return;
       }
 
-      try {
-        const formattedPhone = `+55${phoneNumber}`;
-        setConfirmationResult(null);
-        const confirmation = await signInWithPhoneNumber(
-          auth,
-          formattedPhone,
-          recaptchaVerifier
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+
+      if (!userData.password) {
+        showToast(
+          'Esta conta foi criada sem senha. Use a recuperação de senha',
+          'error'
         );
-        setConfirmationResult(confirmation);
-        alert('Código enviado para seu telefone!');
-        incrementAttempts();
-      } catch (error) {
-        console.error('Erro completo:', error);
-
-        let errorMessage = 'Erro ao enviar código. ';
-
-        if (error.code === 'auth/quota-exceeded') {
-          errorMessage =
-            '❌ Limite de SMS atingido. Tente novamente amanhã ou use email.';
-        } else if (error.code === 'auth/invalid-phone-number') {
-          errorMessage = 'Formato de telefone inválido.';
-          setPhoneError('Formato de telefone inválido');
-        } else if (error.code === 'auth/too-many-requests') {
-          errorMessage = 'Muitas tentativas. Aguarde alguns minutos.';
-          setIsBlocked(true);
-          setRemainingTime(COOLDOWN_TIME);
-        } else if (error.code === 'auth/internal-error') {
-          errorMessage = 'Erro interno. Tente usar autenticação por email.';
-        } else {
-          errorMessage += error.message;
-        }
-
-        alert(errorMessage);
-        incrementAttempts();
-
-        // Limpar e reinicializar reCAPTCHA
-        clearRecaptcha();
+        return;
       }
-    } else {
+
+      if (userData.password !== password) {
+        showToast('Senha incorreta', 'error');
+        return;
+      }
+
+      // Criar email temporário se não existir
+      const emailForAuth =
+        userData.email || `${phoneNumber.replace(/\D/g, '')}@noo.us.temp`;
+
+      // Tentar fazer login. Se não existir no Firebase Auth, criar
       try {
-        await confirmationResult.confirm(verificationCode);
-        localStorage.removeItem(ATTEMPT_STORAGE_KEY);
-      } catch (error) {
-        console.error('Erro ao verificar código:', error);
-        let errorMessage = 'Código inválido. ';
-
-        if (error.code === 'auth/invalid-verification-code') {
-          errorMessage = 'Código inválido. Verifique e tente novamente.';
-        } else if (error.code === 'auth/code-expired') {
-          errorMessage = 'Código expirado. Solicite um novo código.';
-          setConfirmationResult(null);
+        await signInWithEmailAndPassword(auth, emailForAuth, password);
+        showToast('Bem-vindo de volta! 💕', 'success');
+      } catch (loginError) {
+        if (loginError.code === 'auth/user-not-found') {
+          // Usuário existe no Firestore mas não no Auth - criar no Auth
+          try {
+            const userCredential = await createUserWithEmailAndPassword(
+              auth,
+              emailForAuth,
+              password
+            );
+            // Atualizar o UID no Firestore se necessário
+            await updateDoc(doc(db, 'users', userDoc.id), {
+              authUid: userCredential.user.uid,
+            });
+            showToast('Bem-vindo de volta! 💕', 'success');
+          } catch (createError) {
+            showToast('Erro ao restaurar sessão. Contate o suporte', 'error');
+          }
         } else {
-          errorMessage += error.message;
+          throw loginError;
         }
-
-        alert(errorMessage);
       }
+    } catch (error) {
+      showToast('Erro ao fazer login. Verifique suas credenciais', 'error');
     }
   };
 
@@ -621,7 +577,7 @@ export default function Auth() {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        alert('Parceiro(a) não encontrado(a). Verifique o email ou telefone.');
+        showToast('Parceiro(a) não encontrado(a)', 'error');
         return;
       }
 
@@ -630,7 +586,7 @@ export default function Auth() {
       const partnerData = partnerDoc.data();
 
       if (partnerData.partnerId && partnerData.partnerId !== user.uid) {
-        alert('Este usuário já está vinculado a outra pessoa.');
+        showToast('Este usuário já está vinculado a outra pessoa', 'error');
         return;
       }
 
@@ -644,22 +600,35 @@ export default function Auth() {
         partnerName: profile.name,
       });
 
-      alert('Vinculação realizada com sucesso! 💕');
+      showToast('Vinculação realizada com sucesso! 💕', 'success');
       await loadProfile(user.uid);
     } catch (error) {
-      alert('Erro ao vincular: ' + error.message);
+      showToast('Erro ao vincular contas', 'error');
     }
   };
 
   const handleLogout = () => {
-    signOut(auth);
+    setModal({
+      isOpen: true,
+      title: 'Sair da conta',
+      message: 'Deseja realmente sair?',
+      type: 'warning',
+      showCancel: true,
+      onConfirm: () => {
+        signOut(auth);
+        showToast('Até logo! 👋', 'success');
+      },
+    });
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-pulse text-pink-500 text-2xl">
-          Carregando...
+        <div className="text-center">
+          <Heart className="w-16 h-16 text-pink-500 mx-auto mb-4 animate-pulse" />
+          <div className="text-pink-500 text-xl font-semibold">
+            Carregando...
+          </div>
         </div>
       </div>
     );
@@ -667,236 +636,194 @@ export default function Auth() {
 
   if (user && profile && !profile.partnerId) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-          <Heart className="w-16 h-16 text-pink-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-center mb-4">
-            Olá, {profile.name}! 💕
-          </h2>
-          <p className="text-gray-600 text-center mb-6">
-            Para começar a usar o Noo.us, você precisa vincular sua conta com a
-            do seu parceiro(a).
-          </p>
-
-          <form onSubmit={handleLinkPartner} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email ou Telefone do(a) Parceiro(a)
-              </label>
-              <input
-                type="text"
-                value={partnerIdentifier}
-                onChange={(e) => setPartnerIdentifier(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                placeholder="email@exemplo.com ou 11999999999"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg flex items-center justify-center gap-2"
-            >
-              <LinkIcon className="w-5 h-5" />
-              Vincular Contas
-            </button>
-          </form>
-
-          <button
-            onClick={handleLogout}
-            className="w-full mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
-          >
-            Sair
-          </button>
-
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-gray-600">
-              💡 <strong>Dica:</strong> Seu parceiro(a) precisa criar uma conta
-              primeiro. Depois, você pode vincular usando o email ou telefone
-              cadastrado.
+      <>
+        <Toast />
+        <Modal
+          isOpen={modal.isOpen}
+          onClose={() => setModal({ ...modal, isOpen: false })}
+          title={modal.title}
+          message={modal.message}
+          type={modal.type}
+          showCancel={modal.showCancel}
+          onConfirm={modal.onConfirm}
+        />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+            <Heart className="w-16 h-16 text-pink-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-center mb-4">
+              Olá, {profile.name}! 💕
+            </h2>
+            <p className="text-gray-600 text-center mb-6">
+              Para começar a usar o Noo.us, você precisa vincular sua conta com
+              a do seu parceiro(a).
             </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  if (user && profile && profile.partnerId) {
-    return (
-      <Dashboard profile={profile} onLogout={handleLogout} userId={user.uid} />
-    );
-  }
-
-  if (step === 'choice') {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-          <Heart className="w-16 h-16 text-pink-500 mx-auto mb-4 animate-pulse" />
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
-            Noo.us
-          </h1>
-          <p className="text-gray-600 text-center mb-8">
-            Um espaço especial para deixar surpresas um para o outro 💝
-          </p>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => setStep('signup')}
-              className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-4 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
-            >
-              Criar Nova Conta
-            </button>
-
-            <button
-              onClick={() => setStep('login')}
-              className="w-full bg-gray-100 text-gray-800 py-4 rounded-lg font-semibold hover:bg-gray-200 transition"
-            >
-              Já Tenho Conta
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'signup') {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-          <button
-            onClick={() => {
-              setStep('choice');
-              setAuthMethod('email');
-              setConfirmationResult(null);
-              setPhoneError('');
-              setVerificationCode('');
-              setName('');
-              setEmail('');
-              setPassword('');
-              setPhoneNumber('');
-              setRelationshipStart('');
-              clearRecaptcha();
-            }}
-            className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Voltar
-          </button>
-
-          <Heart className="w-12 h-12 text-pink-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-center mb-6">Criar Conta</h2>
-
-          <div className="flex gap-2 mb-6">
-            <button
-              onClick={() => {
-                setAuthMethod('email');
-                setConfirmationResult(null);
-                setPhoneError('');
-              }}
-              className={`flex-1 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
-                authMethod === 'email'
-                  ? 'bg-pink-500 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <Mail className="w-5 h-5" />
-              Email
-            </button>
-            <button
-              onClick={() => {
-                setAuthMethod('phone');
-                setConfirmationResult(null);
-                setPhoneError('');
-              }}
-              className={`flex-1 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
-                authMethod === 'phone'
-                  ? 'bg-pink-500 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <Smartphone className="w-5 h-5" />
-              Telefone
-            </button>
-          </div>
-
-          {authMethod === 'email' && (
-            <form onSubmit={handleEmailSignup} className="space-y-4">
+            <form onSubmit={handleLinkPartner} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Seu Nome
+                  Email ou Telefone do(a) Parceiro(a)
                 </label>
                 <input
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  minLength="6"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Início do Relacionamento
-                </label>
-                <input
-                  type="date"
-                  value={relationshipStart}
-                  onChange={(e) => setRelationshipStart(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  value={partnerIdentifier}
+                  onChange={(e) => setPartnerIdentifier(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  placeholder="email@exemplo.com ou 11999999999"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
+                className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg flex items-center justify-center gap-2"
               >
-                Criar Conta
+                <LinkIcon className="w-5 h-5" />
+                Vincular Contas
               </button>
             </form>
-          )}
 
-          {authMethod === 'phone' && (
-            <>
-              {isBlocked && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-red-700">
-                    <strong>Muitas tentativas.</strong> Aguarde{' '}
-                    {Math.ceil(remainingTime / 1000)}s antes de tentar
-                    novamente.
-                  </div>
-                </div>
-              )}
+            <button
+              onClick={handleLogout}
+              className="w-full mt-4 px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition font-medium"
+            >
+              Sair
+            </button>
 
-              <form onSubmit={handlePhoneSignup} className="space-y-4">
+            <div className="mt-6 p-4 bg-pink-50 rounded-xl">
+              <p className="text-sm text-gray-600">
+                💡 <strong>Dica:</strong> Seu parceiro(a) precisa criar uma
+                conta primeiro. Depois, você pode vincular usando o email ou
+                telefone cadastrado.
+              </p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (user && profile && profile.partnerId) {
+    return (
+      <>
+        <Toast />
+        <Modal
+          isOpen={modal.isOpen}
+          onClose={() => setModal({ ...modal, isOpen: false })}
+          title={modal.title}
+          message={modal.message}
+          type={modal.type}
+          showCancel={modal.showCancel}
+          onConfirm={modal.onConfirm}
+        />
+        <Dashboard
+          profile={profile}
+          onLogout={handleLogout}
+          userId={user.uid}
+          setModal={setModal}
+        />
+      </>
+    );
+  }
+
+  if (step === 'choice') {
+    return (
+      <>
+        <Toast />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+            <Heart className="w-16 h-16 text-pink-500 mx-auto mb-4 animate-pulse" />
+            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
+              Noo.us
+            </h1>
+            <p className="text-gray-600 text-center mb-8">
+              Um espaço especial para deixar surpresas um para o outro 💝
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => setStep('signup')}
+                className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-4 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
+              >
+                Criar Nova Conta
+              </button>
+
+              <button
+                onClick={() => setStep('login')}
+                className="w-full bg-gray-100 text-gray-800 py-4 rounded-xl font-semibold hover:bg-gray-200 transition"
+              >
+                Já Tenho Conta
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (step === 'signup') {
+    return (
+      <>
+        <Toast />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+            <button
+              onClick={() => {
+                setStep('choice');
+                setAuthMethod('email');
+                setConfirmationResult(null);
+                setPhoneError('');
+                setVerificationCode('');
+                setName('');
+                setEmail('');
+                setPassword('');
+                setPhoneNumber('');
+                setRelationshipStart('');
+                clearRecaptcha();
+              }}
+              className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2 transition"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+
+            <Heart className="w-12 h-12 text-pink-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-center mb-6">Criar Conta</h2>
+
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => {
+                  setAuthMethod('email');
+                  setConfirmationResult(null);
+                  setPhoneError('');
+                }}
+                className={`flex-1 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                  authMethod === 'email'
+                    ? 'bg-pink-500 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                <Mail className="w-5 h-5" />
+                Email
+              </button>
+              <button
+                onClick={() => {
+                  setAuthMethod('phone');
+                  setConfirmationResult(null);
+                  setPhoneError('');
+                }}
+                className={`flex-1 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                  authMethod === 'phone'
+                    ? 'bg-pink-500 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                <Smartphone className="w-5 h-5" />
+                Telefone
+              </button>
+            </div>
+
+            {authMethod === 'email' && (
+              <form onSubmit={handleEmailSignup} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Seu Nome
@@ -905,33 +832,36 @@ export default function Auth() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                     required
-                    disabled={!!confirmationResult}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Telefone (com DDD)
+                    Email
                   </label>
                   <input
-                    type="tel"
-                    value={formatPhoneDisplay(phoneNumber)}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
-                      phoneError ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="(11) 99999-9999"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                     required
-                    disabled={!!confirmationResult}
                   />
-                  {phoneError && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {phoneError}
-                    </p>
-                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Senha
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    minLength="6"
+                    required
+                  />
                 </div>
 
                 <div>
@@ -942,203 +872,250 @@ export default function Auth() {
                     type="date"
                     value={relationshipStart}
                     onChange={(e) => setRelationshipStart(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                     required
-                    disabled={!!confirmationResult}
                   />
                 </div>
 
-                {confirmationResult && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Código de Verificação
-                    </label>
-                    <input
-                      type="text"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      placeholder="123456"
-                      required
-                      maxLength="6"
-                    />
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
+                >
+                  Criar Conta
+                </button>
+              </form>
+            )}
+
+            {authMethod === 'phone' && (
+              <>
+                {isBlocked && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-red-700">
+                      <strong>Muitas tentativas.</strong> Aguarde{' '}
+                      {Math.ceil(remainingTime / 1000)}s antes de tentar
+                      novamente.
+                    </div>
                   </div>
                 )}
 
-                <div id="recaptcha-container"></div>
+                <form onSubmit={handlePhoneSignup} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Seu Nome
+                    </label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      required
+                      disabled={!!confirmationResult}
+                    />
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={isBlocked}
-                  className={`w-full py-3 rounded-lg font-semibold transition shadow-lg ${
-                    isBlocked
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600'
-                  }`}
-                >
-                  {confirmationResult ? 'Verificar Código' : 'Enviar Código'}
-                </button>
-              </form>
-            </>
-          )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Telefone (com DDD)
+                    </label>
+                    <input
+                      type="tel"
+                      value={formatPhoneDisplay(phoneNumber)}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                        phoneError ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="(11) 99999-9999"
+                      required
+                      disabled={!!confirmationResult}
+                    />
+                    {phoneError && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        {phoneError}
+                      </p>
+                    )}
+                  </div>
 
-          <div className="mt-4 p-4 bg-pink-50 rounded-lg">
-            <p className="text-sm text-gray-600">
-              💡 <strong>Importante:</strong> Cada pessoa cria sua própria
-              conta. Depois, vocês vinculam as contas para compartilhar
-              surpresas!
-            </p>
-          </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Senha
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      minLength="6"
+                      required
+                      disabled={!!confirmationResult}
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                  </div>
 
-          {authMethod === 'phone' && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-gray-700 font-semibold mb-2">
-                📱 Problemas com SMS?
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Início do Relacionamento
+                    </label>
+                    <input
+                      type="date"
+                      value={relationshipStart}
+                      onChange={(e) => setRelationshipStart(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      required
+                      disabled={!!confirmationResult}
+                    />
+                  </div>
+
+                  {confirmationResult && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Código de Verificação
+                      </label>
+                      <input
+                        type="text"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent text-center text-2xl tracking-widest"
+                        placeholder="000000"
+                        required
+                        maxLength="6"
+                      />
+                    </div>
+                  )}
+
+                  <div
+                    id="recaptcha-container"
+                    className="flex justify-center"
+                  ></div>
+
+                  <button
+                    type="submit"
+                    disabled={isBlocked}
+                    className={`w-full py-3 rounded-xl font-semibold transition shadow-lg ${
+                      isBlocked
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600'
+                    }`}
+                  >
+                    {confirmationResult
+                      ? 'Verificar Código'
+                      : 'Enviar Código SMS'}
+                  </button>
+                </form>
+              </>
+            )}
+
+            <div className="mt-4 p-4 bg-pink-50 rounded-xl">
+              <p className="text-sm text-gray-600">
+                💡 <strong>Importante:</strong> Cada pessoa cria sua própria
+                conta. Depois, vocês vinculam as contas para compartilhar
+                surpresas!
               </p>
-              <ul className="text-xs text-gray-600 space-y-1">
-                <li>• Resolva o reCAPTCHA antes de enviar</li>
-                <li>• Aguarde alguns segundos após enviar</li>
-                <li>• Verifique se o número está correto</li>
-                <li>• Use autenticação por email como alternativa</li>
-              </ul>
-
-              <details className="mt-3">
-                <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800">
-                  🧪 Desenvolvedores: Números de teste
-                </summary>
-                <div className="mt-2 p-2 bg-white rounded text-xs">
-                  <p className="font-mono text-gray-700">
-                    Configure no Firebase Console:
-                    <br />
-                    Authentication → Sign-in method → Phone
-                    <br />
-                    → Phone numbers for testing
-                    <br />
-                    <br />
-                    Exemplo: +55 11 99999-9999 → Código: 123456
-                  </p>
-                </div>
-              </details>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (step === 'login') {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-          <button
-            onClick={() => {
-              setStep('choice');
-              setAuthMethod('email');
-              setConfirmationResult(null);
-              setPhoneError('');
-              setVerificationCode('');
-              setName('');
-              setEmail('');
-              setPassword('');
-              setPhoneNumber('');
-              setRelationshipStart('');
-              if (recaptchaVerifier) {
-                recaptchaVerifier.clear();
-                setRecaptchaVerifier(null);
-              }
-            }}
-            className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Voltar
-          </button>
-
-          <Heart className="w-12 h-12 text-pink-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-center mb-6">Entrar</h2>
-
-          <div className="flex gap-2 mb-6">
+      <>
+        <Toast />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
             <button
               onClick={() => {
+                setStep('choice');
                 setAuthMethod('email');
                 setConfirmationResult(null);
                 setPhoneError('');
+                setVerificationCode('');
+                setName('');
+                setEmail('');
+                setPassword('');
+                setPhoneNumber('');
+                clearRecaptcha();
               }}
-              className={`flex-1 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
-                authMethod === 'email'
-                  ? 'bg-pink-500 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
+              className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2 transition"
             >
-              <Mail className="w-5 h-5" />
-              Email
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
             </button>
-            <button
-              onClick={() => {
-                setAuthMethod('phone');
-                setConfirmationResult(null);
-                setPhoneError('');
-              }}
-              className={`flex-1 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
-                authMethod === 'phone'
-                  ? 'bg-pink-500 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <Smartphone className="w-5 h-5" />
-              Telefone
-            </button>
-          </div>
 
-          {authMethod === 'email' && (
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  required
-                />
-              </div>
+            <Heart className="w-12 h-12 text-pink-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-center mb-6">Entrar</h2>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
+            <div className="flex gap-2 mb-6">
               <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
+                onClick={() => {
+                  setAuthMethod('email');
+                  setPhoneError('');
+                }}
+                className={`flex-1 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                  authMethod === 'email'
+                    ? 'bg-pink-500 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
               >
-                Entrar
+                <Mail className="w-5 h-5" />
+                Email
               </button>
-            </form>
-          )}
+              <button
+                onClick={() => {
+                  setAuthMethod('phone');
+                  setPhoneError('');
+                }}
+                className={`flex-1 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                  authMethod === 'phone'
+                    ? 'bg-pink-500 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                <Smartphone className="w-5 h-5" />
+                Telefone
+              </button>
+            </div>
 
-          {authMethod === 'phone' && (
-            <>
-              {isBlocked && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-red-700">
-                    <strong>Muitas tentativas.</strong> Aguarde{' '}
-                    {Math.ceil(remainingTime / 1000)}s antes de tentar
-                    novamente.
-                  </div>
+            {authMethod === 'email' && (
+              <form onSubmit={handleEmailLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    required
+                  />
                 </div>
-              )}
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Senha
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
+                >
+                  Entrar
+                </button>
+              </form>
+            )}
+
+            {authMethod === 'phone' && (
               <form onSubmit={handlePhoneLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1148,12 +1125,11 @@ export default function Auth() {
                     type="tel"
                     value={formatPhoneDisplay(phoneNumber)}
                     onChange={(e) => handlePhoneChange(e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
                       phoneError ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="(11) 99999-9999"
                     required
-                    disabled={!!confirmationResult}
                   />
                   {phoneError && (
                     <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
@@ -1163,48 +1139,38 @@ export default function Auth() {
                   )}
                 </div>
 
-                {confirmationResult && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Código de Verificação
-                    </label>
-                    <input
-                      type="text"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      placeholder="123456"
-                      required
-                      maxLength="6"
-                    />
-                  </div>
-                )}
-
-                <div id="recaptcha-container"></div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Senha
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    required
+                  />
+                </div>
 
                 <button
                   type="submit"
-                  disabled={isBlocked}
-                  className={`w-full py-3 rounded-lg font-semibold transition shadow-lg ${
-                    isBlocked
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600'
-                  }`}
+                  className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
                 >
-                  {confirmationResult ? 'Verificar Código' : 'Enviar Código'}
+                  Entrar
                 </button>
               </form>
-            </>
-          )}
+            )}
+
+            <div className="mt-6 p-4 bg-blue-50 rounded-xl">
+              <p className="text-sm text-gray-600 text-center">
+                <strong>Primeira vez?</strong> Crie uma conta para começar! 💝
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  return (
-    <>
-      {process.env.NODE_ENV === 'development' && <FirebaseDiagnostic />}
-      {null}
-    </>
-  );
+  return <Toast />;
 }

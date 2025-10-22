@@ -11,6 +11,7 @@ import {
   doc,
   getDoc,
 } from 'firebase/firestore';
+import { showToast } from './Toast';
 import {
   Heart,
   MessageCircle,
@@ -22,9 +23,10 @@ import {
   Trash2,
   Clock,
   User,
+  X,
 } from 'lucide-react';
 
-export default function Dashboard({ profile, onLogout, userId }) {
+export default function Dashboard({ profile, onLogout, userId, setModal }) {
   const [surprises, setSurprises] = useState([]);
   const [showNewSurprise, setShowNewSurprise] = useState(false);
   const [partnerProfile, setPartnerProfile] = useState(null);
@@ -35,7 +37,6 @@ export default function Dashboard({ profile, onLogout, userId }) {
   });
 
   useEffect(() => {
-    // Carregar perfil do parceiro
     const loadPartnerProfile = async () => {
       if (profile.partnerId) {
         try {
@@ -44,7 +45,7 @@ export default function Dashboard({ profile, onLogout, userId }) {
             setPartnerProfile(partnerDoc.data());
           }
         } catch (error) {
-          console.error('Erro ao carregar perfil do parceiro:', error);
+          showToast('Erro ao carregar perfil do parceiro', 'error');
         }
       }
     };
@@ -55,7 +56,6 @@ export default function Dashboard({ profile, onLogout, userId }) {
   useEffect(() => {
     if (!userId) return;
 
-    // Carregar surpresas recebidas
     const q = query(
       collection(db, 'surprises'),
       where('recipientId', '==', userId),
@@ -85,7 +85,7 @@ export default function Dashboard({ profile, onLogout, userId }) {
     e.preventDefault();
 
     if (!profile.partnerId) {
-      alert('Você precisa vincular com seu parceiro primeiro!');
+      showToast('Você precisa vincular com seu parceiro primeiro!', 'error');
       return;
     }
 
@@ -104,20 +104,29 @@ export default function Dashboard({ profile, onLogout, userId }) {
 
       setNewSurprise({ type: 'message', content: '', title: '' });
       setShowNewSurprise(false);
-      alert('Surpresa criada com sucesso! 💝');
+      showToast('Surpresa criada com sucesso! 💝', 'success');
     } catch (error) {
-      alert('Erro ao criar surpresa: ' + error.message);
+      showToast('Erro ao criar surpresa', 'error');
     }
   };
 
   const handleDeleteSurprise = async (surpriseId) => {
-    if (confirm('Deseja realmente apagar esta surpresa?')) {
-      try {
-        await deleteDoc(doc(db, 'surprises', surpriseId));
-      } catch (error) {
-        alert('Erro ao deletar: ' + error.message);
-      }
-    }
+    setModal({
+      isOpen: true,
+      title: 'Excluir surpresa',
+      message: 'Deseja realmente apagar esta surpresa?',
+      type: 'warning',
+      showCancel: true,
+      confirmText: 'Excluir',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'surprises', surpriseId));
+          showToast('Surpresa excluída', 'success');
+        } catch (error) {
+          showToast('Erro ao deletar surpresa', 'error');
+        }
+      },
+    });
   };
 
   const getSurpriseIcon = (type) => {
@@ -140,12 +149,12 @@ export default function Dashboard({ profile, onLogout, userId }) {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
                 Olá, {profile.name}! 💝
               </h1>
-              <p className="text-gray-600">
+              <p className="text-sm md:text-base text-gray-600">
                 {profile.partnerName
                   ? `Veja se ${profile.partnerName} deixou algo especial para você`
                   : 'Vincule sua conta com seu parceiro para começar'}
@@ -153,33 +162,35 @@ export default function Dashboard({ profile, onLogout, userId }) {
             </div>
             <button
               onClick={onLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
             >
               <LogOut className="w-4 h-4" />
-              Sair
+              <span className="hidden sm:inline">Sair</span>
             </button>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mt-6">
             <div className="bg-gradient-to-br from-pink-50 to-purple-50 p-4 rounded-xl">
-              <div className="text-3xl font-bold text-pink-600">
+              <div className="text-2xl md:text-3xl font-bold text-pink-600">
                 {daysTogetherCalculator()}
               </div>
-              <div className="text-sm text-gray-600">dias juntos ❤️</div>
+              <div className="text-xs md:text-sm text-gray-600">
+                dias juntos ❤️
+              </div>
             </div>
             <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl">
-              <div className="text-3xl font-bold text-blue-600">
+              <div className="text-2xl md:text-3xl font-bold text-blue-600">
                 {surprises.length}
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-xs md:text-sm text-gray-600">
                 surpresas recebidas 🎁
               </div>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl col-span-2 md:col-span-1">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-green-600" />
-                <div className="text-sm text-gray-600">
+                <div className="text-xs md:text-sm text-gray-600">
                   {profile.partnerName ? (
                     <span>
                       Vinculado com <strong>{profile.partnerName}</strong>
@@ -211,15 +222,30 @@ export default function Dashboard({ profile, onLogout, userId }) {
             className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-4 rounded-2xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg mb-6 flex items-center justify-center gap-2"
           >
             <Gift className="w-5 h-5" />
-            Deixar uma Surpresa para {profile.partnerName}
+            <span className="hidden sm:inline">
+              Deixar uma Surpresa para {profile.partnerName}
+            </span>
+            <span className="sm:hidden">
+              Nova Surpresa para {profile.partnerName}
+            </span>
           </button>
         )}
 
         {/* Modal Nova Surpresa */}
         {showNewSurprise && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h3 className="text-2xl font-bold mb-6">Nova Surpresa 💝</h3>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+            <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl md:text-2xl font-bold">
+                  Nova Surpresa 💝
+                </h3>
+                <button
+                  onClick={() => setShowNewSurprise(false)}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
 
               <form onSubmit={handleCreateSurprise} className="space-y-4">
                 <div>
@@ -232,10 +258,10 @@ export default function Dashboard({ profile, onLogout, userId }) {
                         key={type}
                         type="button"
                         onClick={() => setNewSurprise({ ...newSurprise, type })}
-                        className={`p-3 rounded-lg border-2 transition flex items-center justify-center gap-2 ${
+                        className={`p-3 rounded-xl border-2 transition flex items-center justify-center gap-2 ${
                           newSurprise.type === type
                             ? 'border-pink-500 bg-pink-50'
-                            : 'border-gray-200'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         {getSurpriseIcon(type)}
@@ -255,7 +281,7 @@ export default function Dashboard({ profile, onLogout, userId }) {
                     onChange={(e) =>
                       setNewSurprise({ ...newSurprise, title: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                     placeholder="Ex: Para você, com amor"
                     required
                   />
@@ -277,7 +303,7 @@ export default function Dashboard({ profile, onLogout, userId }) {
                         content: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 min-h-[100px]"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent min-h-[100px]"
                     placeholder={
                       newSurprise.type === 'music'
                         ? 'Cole o link aqui...'
@@ -293,15 +319,15 @@ export default function Dashboard({ profile, onLogout, userId }) {
                   <button
                     type="button"
                     onClick={() => setShowNewSurprise(false)}
-                    className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition font-medium"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg hover:from-pink-600 hover:to-purple-600 transition"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl hover:from-pink-600 hover:to-purple-600 transition font-medium"
                   >
-                    Criar Surpresa
+                    Criar
                   </button>
                 </div>
               </form>
@@ -311,14 +337,14 @@ export default function Dashboard({ profile, onLogout, userId }) {
 
         {/* Lista de Surpresas */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
             Suas Surpresas Recebidas 🎁
           </h2>
 
           {surprises.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center">
-              <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">
+            <div className="bg-white rounded-2xl p-8 md:p-12 text-center">
+              <Heart className="w-12 md:w-16 h-12 md:h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-sm md:text-base text-gray-500">
                 {profile.partnerName
                   ? `Ainda não há surpresas... mas em breve ${profile.partnerName} pode deixar algo especial! 💕`
                   : 'Vincule sua conta para receber surpresas!'}
@@ -328,39 +354,43 @@ export default function Dashboard({ profile, onLogout, userId }) {
             surprises.map((surprise) => (
               <div
                 key={surprise.id}
-                className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition"
+                className="bg-white rounded-2xl p-4 md:p-6 shadow-lg hover:shadow-xl transition"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-pink-100 p-3 rounded-full text-pink-600">
+                <div className="flex items-start justify-between mb-4 gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="bg-pink-100 p-3 rounded-full text-pink-600 flex-shrink-0">
                       {getSurpriseIcon(surprise.type)}
                     </div>
-                    <div>
-                      <h3 className="font-bold text-lg">{surprise.title}</h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Clock className="w-4 h-4" />
-                        {new Date(surprise.createdAt).toLocaleDateString(
-                          'pt-BR'
-                        )}
-                        {' • De '}
-                        {surprise.senderName}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-base md:text-lg truncate">
+                        {surprise.title}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                          {new Date(surprise.createdAt).toLocaleDateString(
+                            'pt-BR'
+                          )}
+                        </div>
+                        <span>•</span>
+                        <span>De {surprise.senderName}</span>
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={() => handleDeleteSurprise(surprise.id)}
-                    className="text-gray-400 hover:text-red-500 transition"
+                    className="text-gray-400 hover:text-red-500 transition flex-shrink-0"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="pl-14">
+                <div className="pl-0 md:pl-14">
                   {surprise.type === 'photo' && (
                     <img
                       src={surprise.content}
                       alt="Surpresa"
-                      className="rounded-lg max-w-full h-auto mb-2"
+                      className="rounded-xl max-w-full h-auto mb-2"
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.parentElement.innerHTML +=
@@ -383,7 +413,7 @@ export default function Dashboard({ profile, onLogout, userId }) {
 
                   {(surprise.type === 'message' ||
                     surprise.type === 'date') && (
-                    <p className="text-gray-700 whitespace-pre-wrap">
+                    <p className="text-sm md:text-base text-gray-700 whitespace-pre-wrap break-words">
                       {surprise.content}
                     </p>
                   )}
