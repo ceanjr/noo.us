@@ -2,33 +2,52 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Regras para a coleção de casais
-    match /couples/{coupleId} {
-      // Permitir leitura e escrita apenas se o usuário autenticado for o dono
-      allow read, write: if request.auth != null && request.auth.uid == coupleId;
+    // Regras para a coleção de usuários
+    match /users/{userId} {
+      // Permitir criar conta apenas se for o próprio usuário
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Permitir ler o próprio perfil
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Permitir ler perfil do parceiro vinculado
+      allow read: if request.auth != null 
+                  && resource.data.partnerId == request.auth.uid;
+      
+      // Permitir atualizar o próprio perfil
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // Não permitir deletar
+      allow delete: if false;
     }
     
     // Regras para a coleção de surpresas
     match /surprises/{surpriseId} {
-      // Permitir criar surpresa se estiver autenticado
+      // Permitir criar surpresa se estiver autenticado e for o remetente
       allow create: if request.auth != null 
-                    && request.resource.data.coupleId is string
-                    && request.resource.data.sender is string
-                    && request.resource.data.recipient is string
+                    && request.resource.data.senderId == request.auth.uid
+                    && request.resource.data.senderName is string
+                    && request.resource.data.recipientId is string
+                    && request.resource.data.recipientName is string
                     && request.resource.data.type is string
-                    && request.resource.data.content is string;
+                    && request.resource.data.content is string
+                    && request.resource.data.title is string;
       
-      // Permitir ler surpresas do próprio casal
+      // Permitir ler surpresas recebidas
       allow read: if request.auth != null 
-                  && resource.data.coupleId == request.auth.uid;
+                  && resource.data.recipientId == request.auth.uid;
       
-      // Permitir deletar apenas surpresas do próprio casal
+      // Permitir ler surpresas enviadas
+      allow read: if request.auth != null 
+                  && resource.data.senderId == request.auth.uid;
+      
+      // Permitir deletar apenas se for o destinatário
       allow delete: if request.auth != null 
-                    && resource.data.coupleId == request.auth.uid;
+                    && resource.data.recipientId == request.auth.uid;
       
-      // Permitir atualizar (marcar como vista, por exemplo)
+      // Permitir atualizar (marcar como vista, por exemplo) se for o destinatário
       allow update: if request.auth != null 
-                    && resource.data.coupleId == request.auth.uid;
+                    && resource.data.recipientId == request.auth.uid;
     }
   }
 }

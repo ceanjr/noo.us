@@ -9,6 +9,7 @@ import {
   orderBy,
   deleteDoc,
   doc,
+  getDoc,
 } from 'firebase/firestore';
 import {
   Heart,
@@ -20,35 +21,44 @@ import {
   LogOut,
   Trash2,
   Clock,
+  User,
 } from 'lucide-react';
 
-export default function Dashboard({ profile, onLogout, coupleId }) {
-  const [currentProfile, setCurrentProfile] = useState(null);
-  const [showPasswordModal, setShowPasswordModal] = useState(true);
-  const [passwordInput, setPasswordInput] = useState('');
+export default function Dashboard({ profile, onLogout, userId }) {
   const [surprises, setSurprises] = useState([]);
   const [showNewSurprise, setShowNewSurprise] = useState(false);
+  const [partnerProfile, setPartnerProfile] = useState(null);
   const [newSurprise, setNewSurprise] = useState({
     type: 'message',
     content: '',
     title: '',
   });
 
-  const daysTogetherCalculator = () => {
-    if (!profile.relationshipStart) return 0;
-    const start = new Date(profile.relationshipStart);
-    const today = new Date();
-    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
+  useEffect(() => {
+    // Carregar perfil do parceiro
+    const loadPartnerProfile = async () => {
+      if (profile.partnerId) {
+        try {
+          const partnerDoc = await getDoc(doc(db, 'users', profile.partnerId));
+          if (partnerDoc.exists()) {
+            setPartnerProfile(partnerDoc.data());
+          }
+        } catch (error) {
+          console.error('Erro ao carregar perfil do parceiro:', error);
+        }
+      }
+    };
+
+    loadPartnerProfile();
+  }, [profile.partnerId]);
 
   useEffect(() => {
-    if (!currentProfile) return;
+    if (!userId) return;
 
+    // Carregar surpresas recebidas
     const q = query(
       collection(db, 'surprises'),
-      where('coupleId', '==', coupleId),
-      where('recipient', '==', currentProfile),
+      where('recipientId', '==', userId),
       orderBy('createdAt', 'desc')
     );
 
@@ -61,30 +71,30 @@ export default function Dashboard({ profile, onLogout, coupleId }) {
     });
 
     return () => unsubscribe();
-  }, [currentProfile, coupleId]);
+  }, [userId]);
 
-  const handlePasswordCheck = () => {
-    if (passwordInput === profile.person1.password) {
-      setCurrentProfile('person1');
-      setShowPasswordModal(false);
-    } else if (passwordInput === profile.person2.password) {
-      setCurrentProfile('person2');
-      setShowPasswordModal(false);
-    } else {
-      alert('Senha incorreta!');
-    }
+  const daysTogetherCalculator = () => {
+    if (!profile.relationshipStart) return 0;
+    const start = new Date(profile.relationshipStart);
+    const today = new Date();
+    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+    return diff;
   };
 
   const handleCreateSurprise = async (e) => {
     e.preventDefault();
 
-    const recipient = currentProfile === 'person1' ? 'person2' : 'person1';
+    if (!profile.partnerId) {
+      alert('Você precisa vincular com seu parceiro primeiro!');
+      return;
+    }
 
     try {
       await addDoc(collection(db, 'surprises'), {
-        coupleId,
-        sender: currentProfile,
-        recipient,
+        senderId: userId,
+        senderName: profile.name,
+        recipientId: profile.partnerId,
+        recipientName: profile.partnerName,
         type: newSurprise.type,
         title: newSurprise.title,
         content: newSurprise.content,
@@ -125,42 +135,6 @@ export default function Dashboard({ profile, onLogout, coupleId }) {
     }
   };
 
-  if (showPasswordModal) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-          <Heart className="w-16 h-16 text-pink-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-center mb-6">
-            Quem está entrando? 💕
-          </h2>
-          <p className="text-gray-600 text-center mb-6">
-            Digite sua senha pessoal para acessar seu perfil
-          </p>
-          <input
-            type="password"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handlePasswordCheck()}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent mb-4"
-            placeholder="Sua senha"
-            autoFocus
-          />
-          <button
-            onClick={handlePasswordCheck}
-            className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition"
-          >
-            Entrar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const currentName =
-    currentProfile === 'person1' ? profile.person1.name : profile.person2.name;
-  const partnerName =
-    currentProfile === 'person1' ? profile.person2.name : profile.person1.name;
-
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -169,10 +143,12 @@ export default function Dashboard({ profile, onLogout, coupleId }) {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                Olá, {currentName}! 💝
+                Olá, {profile.name}! 💝
               </h1>
               <p className="text-gray-600">
-                Veja se {partnerName} deixou algo especial para você
+                {profile.partnerName
+                  ? `Veja se ${profile.partnerName} deixou algo especial para você`
+                  : 'Vincule sua conta com seu parceiro para começar'}
               </p>
             </div>
             <button
@@ -185,7 +161,7 @@ export default function Dashboard({ profile, onLogout, coupleId }) {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
             <div className="bg-gradient-to-br from-pink-50 to-purple-50 p-4 rounded-xl">
               <div className="text-3xl font-bold text-pink-600">
                 {daysTogetherCalculator()}
@@ -200,17 +176,44 @@ export default function Dashboard({ profile, onLogout, coupleId }) {
                 surpresas recebidas 🎁
               </div>
             </div>
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-green-600" />
+                <div className="text-sm text-gray-600">
+                  {profile.partnerName ? (
+                    <span>
+                      Vinculado com <strong>{profile.partnerName}</strong>
+                    </span>
+                  ) : (
+                    <span className="text-orange-600">Não vinculado ainda</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Info de contato */}
+          <div className="mt-4 p-4 bg-gray-50 rounded-xl">
+            <div className="text-sm text-gray-600">
+              <strong>Suas informações:</strong>
+              <div className="mt-2 space-y-1">
+                {profile.email && <div>📧 {profile.email}</div>}
+                {profile.phoneNumber && <div>📱 {profile.phoneNumber}</div>}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Nova Surpresa */}
-        <button
-          onClick={() => setShowNewSurprise(true)}
-          className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-4 rounded-2xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg mb-6 flex items-center justify-center gap-2"
-        >
-          <Gift className="w-5 h-5" />
-          Deixar uma Surpresa para {partnerName}
-        </button>
+        {/* Botão Nova Surpresa */}
+        {profile.partnerId && (
+          <button
+            onClick={() => setShowNewSurprise(true)}
+            className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-4 rounded-2xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg mb-6 flex items-center justify-center gap-2"
+          >
+            <Gift className="w-5 h-5" />
+            Deixar uma Surpresa para {profile.partnerName}
+          </button>
+        )}
 
         {/* Modal Nova Surpresa */}
         {showNewSurprise && (
@@ -316,8 +319,9 @@ export default function Dashboard({ profile, onLogout, coupleId }) {
             <div className="bg-white rounded-2xl p-12 text-center">
               <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">
-                Ainda não há surpresas... mas em breve {partnerName} pode deixar
-                algo especial! 💕
+                {profile.partnerName
+                  ? `Ainda não há surpresas... mas em breve ${profile.partnerName} pode deixar algo especial! 💕`
+                  : 'Vincule sua conta para receber surpresas!'}
               </p>
             </div>
           ) : (
@@ -338,6 +342,8 @@ export default function Dashboard({ profile, onLogout, coupleId }) {
                         {new Date(surprise.createdAt).toLocaleDateString(
                           'pt-BR'
                         )}
+                        {' • De '}
+                        {surprise.senderName}
                       </div>
                     </div>
                   </div>
@@ -355,6 +361,11 @@ export default function Dashboard({ profile, onLogout, coupleId }) {
                       src={surprise.content}
                       alt="Surpresa"
                       className="rounded-lg max-w-full h-auto mb-2"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML +=
+                          '<p class="text-red-500 text-sm">Erro ao carregar imagem</p>';
+                      }}
                     />
                   )}
 
