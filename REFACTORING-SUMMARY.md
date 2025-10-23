@@ -125,11 +125,11 @@ Modal para criar surpresa:
 | Arquivo | Antes | Depois | Redução |
 |---------|-------|--------|---------|
 | **DashboardNew.jsx** | 1.615 linhas | **344 linhas** | **79%** ⬇️ |
-| **Auth.jsx** | 1.714 linhas | - | (não refatorado) |
+| **Auth.jsx** | 1.714 linhas | **477 linhas** | **72%** ⬇️ |
 
 **Nota**: A versão refatorada agora inclui TODAS as funcionalidades originais, com todos os componentes (HomeTab, SurprisesTab, InboxTab) extraídos e totalmente documentados!
 
-### Distribuição do Código
+### Distribuição do Código - Dashboard
 
 **Total de linhas extraídas**: ~1.200 linhas
 
@@ -137,16 +137,44 @@ Modal para criar surpresa:
 - **useDashboardData.js**: 145 linhas
 - **useMoments.js**: 126 linhas
 - **usePartnerActions.js**: 151 linhas
-- **useNotificationActions.js**: 174 linhas ✨ NOVO
+- **useNotificationActions.js**: 174 linhas ✨
 
 #### Componentes UI (src/components/dashboard/)
 - **DashboardHeader.jsx**: 60 linhas (✅ com JSDoc)
 - **BottomNavigation.jsx**: 80 linhas (✅ com JSDoc)
 - **LinkPartnerModal.jsx**: 110 linhas (✅ com JSDoc)
 - **CreateSurpriseModal.jsx**: 150 linhas (✅ com JSDoc)
-- **HomeTab.jsx**: 145 linhas (✅ com JSDoc) ✨ NOVO
-- **SurprisesTab.jsx**: 135 linhas (✅ com JSDoc) ✨ NOVO
-- **InboxTab.jsx**: 155 linhas (✅ com JSDoc) ✨ NOVO
+- **HomeTab.jsx**: 145 linhas (✅ com JSDoc) ✨
+- **SurprisesTab.jsx**: 135 linhas (✅ com JSDoc) ✨
+- **InboxTab.jsx**: 155 linhas (✅ com JSDoc) ✨
+
+---
+
+### Distribuição do Código - Auth
+
+**Total de linhas extraídas**: ~1.670 linhas
+
+#### Utils (src/utils/)
+- **crypto.js**: 25 linhas - Password hashing (SHA256 + salt)
+- **formatters.js**: 30 linhas - Phone number formatting
+
+#### Services (src/services/)
+- **validationService.js**: 115 linhas - Validações (phone, email, password, name)
+- **userService.js**: 120 linhas - Firestore user operations
+- **authService.js**: 280 linhas - Firebase Auth operations
+
+#### Custom Hooks (src/hooks/)
+- **useAuthState.js**: 55 linhas - Auth state management
+- **usePhoneAuth.js**: 100 linhas - Phone verification flow
+
+#### Componentes UI (src/components/auth/)
+- **AuthChoice.jsx**: 55 linhas (✅ com JSDoc) - Tela inicial
+- **EmailSignupForm.jsx**: 230 linhas (✅ com JSDoc) - Cadastro por email
+- **PhoneSignupForm.jsx**: 240 linhas (✅ com JSDoc) - Cadastro por telefone
+- **EmailLoginForm.jsx**: 150 linhas (✅ com JSDoc) - Login por email
+- **PhoneLoginForm.jsx**: 165 linhas (✅ com JSDoc) - Login por telefone
+- **PhoneVerification.jsx**: 90 linhas (✅ com JSDoc) - Verificação SMS
+- **ForgotPasswordModal.jsx**: 115 linhas (✅ com JSDoc) - Recuperação de senha
 
 ---
 
@@ -185,18 +213,42 @@ Modal para criar surpresa:
 src/
 ├── components/
 │   ├── dashboard/
-│   │   ├── DashboardHeader.jsx ✨ NOVO
-│   │   ├── BottomNavigation.jsx ✨ NOVO
-│   │   ├── LinkPartnerModal.jsx ✨ NOVO
-│   │   └── CreateSurpriseModal.jsx ✨ NOVO
-│   ├── DashboardNew.jsx (original - backup)
-│   ├── DashboardNewRefactored.jsx ✨ NOVO
-│   └── [outros componentes existentes...]
+│   │   ├── DashboardHeader.jsx ✨
+│   │   ├── BottomNavigation.jsx ✨
+│   │   ├── LinkPartnerModal.jsx ✨
+│   │   ├── CreateSurpriseModal.jsx ✨
+│   │   ├── HomeTab.jsx ✨
+│   │   ├── SurprisesTab.jsx ✨
+│   │   └── InboxTab.jsx ✨
+│   │
+│   ├── auth/
+│   │   ├── AuthChoice.jsx ✨ NOVO
+│   │   ├── EmailSignupForm.jsx ✨ NOVO
+│   │   ├── PhoneSignupForm.jsx ✨ NOVO
+│   │   ├── EmailLoginForm.jsx ✨ NOVO
+│   │   ├── PhoneLoginForm.jsx ✨ NOVO
+│   │   ├── PhoneVerification.jsx ✨ NOVO
+│   │   └── ForgotPasswordModal.jsx ✨ NOVO
+│   │
+│   ├── DashboardNew.jsx (344 linhas - refatorado)
+│   └── Auth.jsx (1.714 linhas - aguardando refatoração)
 │
 ├── hooks/
-│   ├── useDashboardData.js ✨ NOVO
-│   ├── useMoments.js ✨ NOVO
-│   └── usePartnerActions.js ✨ NOVO
+│   ├── useDashboardData.js ✨
+│   ├── useMoments.js ✨
+│   ├── usePartnerActions.js ✨
+│   ├── useNotificationActions.js ✨
+│   ├── useAuthState.js ✨ NOVO
+│   └── usePhoneAuth.js ✨ NOVO
+│
+├── services/
+│   ├── validationService.js ✨ NOVO
+│   ├── userService.js ✨ NOVO
+│   └── authService.js ✨ NOVO
+│
+├── utils/
+│   ├── crypto.js ✨ NOVO
+│   └── formatters.js ✨ NOVO
 │
 └── [demais pastas...]
 ```
@@ -241,10 +293,13 @@ Todos os componentes principais foram extraídos com sucesso:
 1. ✅ Testar versão refatorada extensivamente - **CONCLUÍDO**
 2. ✅ Extrair componentes restantes (HomeTab, InboxTab, etc) - **CONCLUÍDO**
 3. ✅ Documentar props de cada componente (JSDoc) - **CONCLUÍDO**
-4. ⏳ Adicionar testes unitários para hooks
+4. ✅ Refatorar **Auth.jsx** - **CONCLUÍDO** (1.714 → 477 linhas)
+5. ⏳ Testar AuthRefactored.jsx extensivamente
+6. ⏳ Substituir Auth.jsx original pela versão refatorada
+7. ⏳ Adicionar testes unitários para hooks
 
 ### Médio Prazo (1 semana)
-1. ⏳ Refatorar **Auth.jsx** (1.714 linhas) seguindo mesma estratégia
+1. ⏳ Testar Auth.jsx refatorado extensivamente
 2. ⏳ Refatorar **ProfileSettings.jsx** (634 linhas)
 3. ⏳ Criar Storybook para componentes UI
 4. ⏳ Implementar Error Boundaries
@@ -288,6 +343,40 @@ Se encontrar bugs na versão refatorada:
 
 **Data da Refatoração**: 23/10/2025
 **Autor**: Claude Code
-**Status**: ✅ **CONCLUÍDO (100%)**
-**Resultado Final**: Dashboard reduzido de 1.615 para 344 linhas (79% de redução)
-**Próxima Fase**: Auth.jsx refactoring (1.714 linhas) + Testes unitários
+
+### Status Geral
+
+| Componente | Status | Progresso |
+|-----------|--------|-----------|
+| **Dashboard** | ✅ **CONCLUÍDO** | 1.615 → 344 linhas (79% redução) |
+| **Auth** | ✅ **CONCLUÍDO** | 1.714 → 477 linhas (72% redução) |
+| **ProfileSettings** | ⏳ **PENDENTE** | 634 linhas (próxima fase) |
+
+### Estatísticas Finais - Dashboard
+- **Antes**: 1.615 linhas
+- **Depois**: 344 linhas
+- **Redução**: 79% ⬇️
+- **Arquivos extraídos**: 11 componentes/hooks
+- **Total de linhas extraídas**: ~1.200 linhas
+
+### Estatísticas Finais - Auth
+- **Antes**: 1.714 linhas
+- **Depois**: 477 linhas
+- **Redução**: 72% ⬇️
+- **Arquivos criados**: 14 componentes/hooks/services/utils
+- **Total de linhas extraídas**: ~1.237 linhas (1.714 - 477)
+- **Arquivo refatorado**: `src/components/AuthRefactored.jsx` ✅
+
+### Resumo Geral das Refatorações
+
+**Total de linhas reduzidas**: 2.508 linhas (Dashboard + Auth)
+- Dashboard: 1.271 linhas extraídas
+- Auth: 1.237 linhas extraídas
+
+**Total de arquivos criados**: 25 arquivos
+- Dashboard: 11 componentes/hooks
+- Auth: 14 componentes/hooks/services/utils
+
+**Redução média**: 75.5% ⬇️
+
+**Próxima Fase**: Testar AuthRefactored.jsx + Refatorar ProfileSettings.jsx (634 linhas) + Testes unitários
