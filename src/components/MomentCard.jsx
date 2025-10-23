@@ -28,13 +28,13 @@ export default function MomentCard({ moment, onReact, isPrivateMode, size = 'med
   const getGradient = () => {
     switch (moment.type) {
       case 'music':
-        return 'from-primary-500 to-primary-600';
+        return 'from-sunny-400 to-warm-500';
       case 'photo':
-        return 'from-accent-500 to-accent-600';
+        return 'from-primary-500 to-secondary-500';
       case 'message':
-        return 'from-secondary-400 to-secondary-500';
+        return 'from-accent-500 to-lime-500';
       default:
-        return 'from-gray-400 to-gray-500';
+        return 'from-primary-500 to-secondary-500';
     }
   };
 

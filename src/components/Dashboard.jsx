@@ -242,16 +242,16 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
   const getSurpriseGradient = (type) => {
     const gradients = {
-      message: 'from-blue-400 to-cyan-400',
-      photo: 'from-purple-400 to-pink-400',
-      music: 'from-green-400 to-emerald-400',
-      date: 'from-orange-400 to-red-400',
+      message: 'from-accent-400 to-lime-400',
+      photo: 'from-primary-400 to-secondary-400',
+      music: 'from-sunny-400 to-warm-500',
+      date: 'from-primary-400 via-secondary-500 to-warm-500',
     };
-    return gradients[type] || 'from-pink-400 to-rose-400';
+    return gradients[type] || 'from-primary-400 to-secondary-400';
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 pb-20 md:pb-8">
+    <div className="min-h-screen bg-gradient-bg-main pb-20 md:pb-8">
       {/* Settings Modal */}
       {showSettings && (
         <ProfileSettings
@@ -277,11 +277,11 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
           <HomeTab
             profile={profile}
             daysTogether={daysTogether}
-            surprisesCount={surprises.length}
+            recentSurprises={surprises.slice().sort((a, b) =>
+              new Date(b.createdAt) - new Date(a.createdAt)
+            )}
             onLinkPartner={() => setShowLinkPartner(true)}
             onCreateSurprise={() => setShowNewSurprise(true)}
-            onNavigateToSurprises={() => setActiveTab('surprises')}
-            onNavigateToInbox={() => setActiveTab('inbox')}
           />
         )}
 
@@ -318,12 +318,14 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         )}
       </div>
 
-      {/* Bottom Navigation */}
-      <BottomNavigation
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      {/* Bottom Navigation - Esconde quando settings está aberto */}
+      {!showSettings && (
+        <BottomNavigation
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      )}
 
       {/* Modals */}
       {showLinkPartner && (

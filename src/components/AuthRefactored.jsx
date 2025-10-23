@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import Dashboard from './DashboardNew';
+import Dashboard from './Dashboard';
 import Toast, { showToast } from './Toast';
 import Modal from './Modal';
 

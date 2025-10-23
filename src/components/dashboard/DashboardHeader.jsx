@@ -1,4 +1,4 @@
-import { Heart, Bell, Settings, LogOut } from 'lucide-react';
+import { Bell, Settings, LogOut } from 'lucide-react';
 
 /**
  * DashboardHeader - Header fixo no topo do Dashboard
@@ -16,19 +16,21 @@ export default function DashboardHeader({
   onLogout,
 }) {
   return (
-    <div className="sticky top-0 z-40 bg-theme-secondary backdrop-blur-lg border-b border-theme shadow-sm">
+    <div className="sticky top-0 z-40 bg-theme-secondary/95 backdrop-blur-lg border-b border-border-color shadow-sm">
       <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-br from-primary-500 to-secondary-500 p-2 rounded-xl">
-              <Heart className="w-5 h-5 text-white" fill="white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
-                noo.us
-              </h1>
-            </div>
+          {/* Logo com App Icon e Title */}
+          <div className="flex items-center gap-3">
+            <img
+              src="/images/app-icon.svg"
+              alt="noo.us"
+              className="w-10 h-10 sm:w-12 sm:h-12"
+            />
+            <img
+              src="/images/app-title.svg"
+              alt="noo.us"
+              className="h-7 sm:h-9"
+            />
           </div>
 
           {/* Right actions */}

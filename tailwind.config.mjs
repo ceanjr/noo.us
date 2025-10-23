@@ -62,6 +62,22 @@ export default {
           800: 'var(--color-accent-800)',
           900: 'var(--color-accent-900)',
         },
+        // Sunny Yellow to Orange
+        sunny: {
+          400: 'var(--color-sunny-400)',
+          500: 'var(--color-sunny-500)',
+          600: 'var(--color-sunny-600)',
+        },
+        warm: {
+          500: 'var(--color-warm-500)',
+          600: 'var(--color-warm-600)',
+        },
+        // Lime Green
+        lime: {
+          400: 'var(--color-lime-400)',
+          500: 'var(--color-lime-500)',
+          600: 'var(--color-lime-600)',
+        },
         // Sobrescrever cores gray para usar variáveis do tema
         gray: {
           50: 'var(--bg-main)',
@@ -120,6 +136,13 @@ export default {
       },
       backdropBlur: {
         xs: '2px',
+      },
+      backgroundImage: {
+        'gradient-pink-coral': 'var(--gradient-pink-coral)',
+        'gradient-turquoise-lime': 'var(--gradient-turquoise-lime)',
+        'gradient-yellow-orange': 'var(--gradient-yellow-orange)',
+        'gradient-pink-coral-orange': 'var(--gradient-pink-coral-orange)',
+        'gradient-bg-main': 'var(--gradient-bg-main)',
       },
     },
   },

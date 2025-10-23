@@ -104,5 +104,32 @@ service cloud.firestore {
                     && (resource.data.user1Id == request.auth.uid
                         || resource.data.user2Id == request.auth.uid);
     }
+
+    // ===== CHALLENGES (Desafios do Dia) =====
+    match /challenges/{challengeId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ===== EVENTS (Próximos Eventos) =====
+    match /events/{eventId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ===== MOODS (Humor do Dia) =====
+    match /moods/{moodId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ===== LAYOUT (Configuração da Home) =====
+    match /layout/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ===== INVITES (Convites de Vinculação) =====
+    match /invites/{inviteId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if request.auth != null;
+    }
   }
 }

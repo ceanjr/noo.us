@@ -14,7 +14,11 @@ import {
 } from 'firebase/auth';
 import { showToast } from '../components/Toast';
 import { hashPassword } from '../utils/crypto';
-import { createUserProfile, updateLastLogin, loadUserProfile } from './userService';
+import {
+  createUserProfile,
+  updateLastLogin,
+  loadUserProfile,
+} from './userService';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -78,7 +82,11 @@ export const sendPhoneVerificationCode = async (phoneNumber, verifier) => {
   }
 
   try {
-    const result = await signInWithPhoneNumber(auth, formattedPhone, activeVerifier);
+    const result = await signInWithPhoneNumber(
+      auth,
+      formattedPhone,
+      activeVerifier
+    );
     showToast('Código enviado via SMS! 📱', 'success');
     return result;
   } catch (error) {
@@ -187,9 +195,18 @@ export const googleSignIn = async (isSignup = false) => {
  * @param {Object} data - {email, password, name, relationshipStart}
  * @returns {Promise<Object>} Firebase user
  */
-export const emailSignup = async ({ email, password, name, relationshipStart }) => {
+export const emailSignup = async ({
+  email,
+  password,
+  name,
+  relationshipStart,
+}) => {
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
 
     await createUserProfile(userCredential.user.uid, {
       name,
@@ -235,14 +252,21 @@ export const emailLogin = async (email, password, rememberMe = true) => {
       rememberMe ? browserLocalPersistence : browserSessionPersistence
     );
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     await updateLastLogin(userCredential.user.uid);
     showToast('Bem-vindo de volta! 💕', 'success');
     return userCredential.user;
   } catch (error) {
     let errorMessage = 'Erro ao fazer login';
 
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+    if (
+      error.code === 'auth/user-not-found' ||
+      error.code === 'auth/wrong-password'
+    ) {
       errorMessage = 'Email ou senha incorretos';
     } else if (error.code === 'auth/too-many-requests') {
       errorMessage = 'Muitas tentativas. Tente novamente mais tarde';
@@ -256,6 +280,84 @@ export const emailLogin = async (email, password, rememberMe = true) => {
 };
 
 /**
+ * Cadastro com telefone (após verificação SMS)
+ * @param {Object} data - {userId, name, phoneNumber, password, relationshipStart}
+ * @returns {Promise<void>}
+ */
+export const phoneSignup = async ({
+  userId,
+  name,
+  phoneNumber,
+  password,
+  relationshipStart,
+}) => {
+  try {
+    await createUserProfile(userId, {
+      name,
+      email: '',
+      phoneNumber,
+      passwordHash: hashPassword(password),
+      relationshipStart,
+      partnerId: null,
+      partnerName: null,
+      authMethod: 'phone',
+      photoURL: '',
+    });
+
+    showToast('Conta criada com sucesso! 💝', 'success');
+  } catch (error) {
+    console.error('Erro ao criar perfil:', error);
+    showToast('Erro ao criar perfil do usuário', 'error');
+    throw error;
+  }
+};
+
+/**
+ * Login com telefone e senha
+ * @param {string} phoneNumber - Telefone (apenas dígitos)
+ * @param {string} password - Senha
+ * @returns {Promise<Object>} Firebase user
+ */
+export const phoneLogin = async (phoneNumber, password) => {
+  try {
+    const { findUserByPhone } = await import('./userService');
+    const { verifyPassword } = await import('../utils/crypto');
+
+    // Buscar usuário pelo telefone
+    const userResult = await findUserByPhone(phoneNumber);
+    if (!userResult) {
+      showToast('Telefone não cadastrado', 'error');
+      throw new Error('Telefone não cadastrado');
+    }
+
+    // Verificar senha
+    const isPasswordValid = verifyPassword(password, userResult.data.passwordHash);
+    if (!isPasswordValid) {
+      showToast('Senha incorreta', 'error');
+      throw new Error('Senha incorreta');
+    }
+
+    // Login com Firebase usando o mesmo telefone (trigger SMS)
+    // Isso sincroniza o estado do Firebase Auth
+    showToast('Enviando código de verificação...', 'info');
+
+    // Retornar os dados do usuário para continuar o fluxo
+    return {
+      needsPhoneVerification: true,
+      phoneNumber,
+      userId: userResult.id,
+      userData: userResult.data,
+    };
+  } catch (error) {
+    console.error('Erro no login por telefone:', error);
+    if (!error.message.includes('Telefone não cadastrado') && !error.message.includes('Senha incorreta')) {
+      showToast('Erro ao fazer login', 'error');
+    }
+    throw error;
+  }
+};
+
+/**
  * Envia email de recuperação de senha
  * @param {string} email - Email para recuperação
  * @returns {Promise<void>}
@@ -263,7 +365,10 @@ export const emailLogin = async (email, password, rememberMe = true) => {
 export const sendPasswordReset = async (email) => {
   try {
     await sendPasswordResetEmail(auth, email);
-    showToast('Email de recuperação enviado! Verifique sua caixa de entrada', 'success');
+    showToast(
+      'Email de recuperação enviado! Verifique sua caixa de entrada',
+      'success'
+    );
   } catch (error) {
     let errorMessage = 'Erro ao enviar email de recuperação';
 
