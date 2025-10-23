@@ -26,7 +26,7 @@ import {
   serverTimestamp,
   deleteDoc,
 } from 'firebase/firestore';
-import Dashboard from './Dashboard';
+import Dashboard from './DashboardNew';
 import Toast, { showToast } from './Toast';
 import Modal from './Modal';
 import {
@@ -510,6 +510,37 @@ export default function Auth() {
     }
   };
 
+  const handlePhoneLoginVerification = async (e) => {
+    e.preventDefault();
+    try {
+      const { userId, userData } = window.tempLoginData;
+      const user = await verifyPhoneCode();
+
+      // Se o UID do Firebase Auth for diferente do UID do Firestore,
+      // copiar dados para o novo UID e deletar o antigo
+      if (user.uid !== userId) {
+        await setDoc(doc(db, 'users', user.uid), {
+          ...userData,
+          lastLogin: serverTimestamp(),
+        });
+        await deleteDoc(doc(db, 'users', userId));
+      } else {
+        // Apenas atualizar lastLogin
+        await updateDoc(doc(db, 'users', user.uid), {
+          lastLogin: serverTimestamp(),
+        });
+      }
+
+      delete window.tempLoginData;
+      setShowVerificationStep(false);
+      setVerificationCode('');
+      setConfirmationResult(null);
+      showToast('Bem-vindo de volta! 💕', 'success');
+    } catch (error) {
+      console.error('Erro na verificação:', error);
+    }
+  };
+
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     try {
@@ -553,6 +584,7 @@ export default function Auth() {
         auth,
         rememberMe ? browserLocalPersistence : browserSessionPersistence
       );
+
       const formattedPhone = `+55${phoneNumber}`;
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('phoneNumber', '==', formattedPhone));
@@ -571,62 +603,55 @@ export default function Auth() {
         return;
       }
 
-      // Usar o email temporário que foi criado no cadastro
-      const userEmail = userData.email;
-
-      if (!userEmail) {
-        showToast(
-          'Erro ao fazer login. Entre em contato com o suporte',
-          'error'
-        );
-        return;
-      }
-
-      // Fazer login usando credenciais do Firebase Auth
-      // Tentar com a senha temporária do telefone
+      // Login direto sem SMS - apenas validação por senha
+      const cleanPhone = formattedPhone.replace(/\D/g, '').slice(-11);
+      const tempEmail = `${cleanPhone}@phone.noo.us`;
       const tempPassword = 'temp_password_' + phoneNumber;
 
       try {
-        await signInWithEmailAndPassword(auth, userEmail, tempPassword);
-      } catch (loginError) {
-        // Se o usuário ainda não existe no Auth (improvável), criar
-        if (
-          loginError.code === 'auth/user-not-found' ||
-          loginError.code === 'auth/invalid-credential'
-        ) {
-          try {
-            const userCredential = await createUserWithEmailAndPassword(
-              auth,
-              userEmail,
-              tempPassword
-            );
+        // Tentar fazer login com credenciais do Firebase Auth
+        await signInWithEmailAndPassword(auth, tempEmail, tempPassword);
+        const currentUser = auth.currentUser;
 
-            // Se o UID for diferente, atualizar Firestore
-            if (userCredential.user.uid !== userDoc.id) {
-              await setDoc(doc(db, 'users', userCredential.user.uid), {
-                ...userData,
-                email: userEmail,
-              });
-              await deleteDoc(doc(db, 'users', userDoc.id));
-            }
-          } catch (createError) {
-            console.error('Erro ao criar usuário no Auth:', createError);
-            showToast('Erro ao fazer login. Tente novamente', 'error');
-            return;
+        if (currentUser && currentUser.uid !== userDoc.id) {
+          // Migrar dados se UIDs diferentes
+          await setDoc(doc(db, 'users', currentUser.uid), {
+            ...userData,
+            lastLogin: serverTimestamp(),
+          });
+          await deleteDoc(doc(db, 'users', userDoc.id));
+        } else if (currentUser) {
+          await updateDoc(doc(db, 'users', currentUser.uid), {
+            lastLogin: serverTimestamp(),
+          });
+        }
+
+        showToast('Bem-vindo de volta! 💕', 'success');
+      } catch (authError) {
+        // Se não existe no Auth, criar conta
+        if (authError.code === 'auth/user-not-found' ||
+            authError.code === 'auth/invalid-credential' ||
+            authError.code === 'auth/wrong-password') {
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            tempEmail,
+            tempPassword
+          );
+
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+            ...userData,
+            lastLogin: serverTimestamp(),
+          });
+
+          if (userCredential.user.uid !== userDoc.id) {
+            await deleteDoc(doc(db, 'users', userDoc.id));
           }
+
+          showToast('Bem-vindo de volta! 💕', 'success');
         } else {
-          throw loginError;
+          throw authError;
         }
       }
-
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        await updateDoc(doc(db, 'users', currentUser.uid), {
-          lastLogin: serverTimestamp(),
-        });
-      }
-
-      showToast('Bem-vindo de volta! 💕', 'success');
     } catch (error) {
       console.error('Erro no login:', error);
       showToast('Erro ao fazer login. Tente novamente', 'error');
@@ -800,7 +825,7 @@ export default function Auth() {
       <>
         <Toast />
         <div className="flex items-center justify-center min-h-screen p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+          <div className="bg-theme-secondary rounded-3xl shadow-2xl p-8 max-w-md w-full">
             <Heart className="w-16 h-16 text-pink-500 mx-auto mb-4 animate-pulse" />
             <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
               Noo.us
@@ -827,7 +852,7 @@ export default function Auth() {
 
             <div className="mt-6 p-4 bg-blue-50 rounded-xl flex items-start gap-2">
               <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-theme-secondary">
                 <strong>Seguro e privado:</strong> Suas informações são
                 protegidas com criptografia e você mantém controle total da sua
                 conta.
@@ -845,7 +870,7 @@ export default function Auth() {
         <Toast />
         <div id="recaptcha-container"></div>
         <div className="flex items-center justify-center min-h-screen p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+          <div className="bg-theme-secondary rounded-3xl shadow-2xl p-8 max-w-md w-full">
             <button
               onClick={() => {
                 setStep('choice');
@@ -914,7 +939,7 @@ export default function Auth() {
                 {authMethod === 'email' && (
                   <form onSubmit={handleEmailSignup} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Seu Nome
                       </label>
                       <input
@@ -928,7 +953,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Email
                       </label>
                       <input
@@ -942,7 +967,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Senha
                       </label>
                       <div className="relative">
@@ -973,7 +998,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Confirmar Senha
                       </label>
                       <div className="relative">
@@ -1011,7 +1036,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Início do Relacionamento
                       </label>
                       <input
@@ -1035,7 +1060,7 @@ export default function Auth() {
                 {authMethod === 'phone' && (
                   <form onSubmit={handlePhoneSignup} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Seu Nome
                       </label>
                       <input
@@ -1049,7 +1074,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Telefone (com DDD)
                       </label>
                       <input
@@ -1071,7 +1096,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Senha
                       </label>
                       <div className="relative">
@@ -1102,7 +1127,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Confirmar Senha
                       </label>
                       <div className="relative">
@@ -1140,7 +1165,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Início do Relacionamento
                       </label>
                       <input
@@ -1171,7 +1196,7 @@ export default function Auth() {
                       <div className="w-full border-t border-gray-300"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-white text-gray-500">
+                      <span className="px-2 bg-theme-secondary text-gray-500">
                         Ou continue com
                       </span>
                     </div>
@@ -1180,7 +1205,7 @@ export default function Auth() {
                   <div className="mt-4">
                     <button
                       onClick={() => handleGoogleSignIn(true)}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition font-medium text-gray-700"
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition font-medium text-theme-secondary"
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path
@@ -1232,7 +1257,7 @@ export default function Auth() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-theme-secondary mb-1">
                     Código de Verificação
                   </label>
                   <input
@@ -1305,7 +1330,7 @@ export default function Auth() {
           type={modal.type}
         />
         <div className="flex items-center justify-center min-h-screen p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+          <div className="bg-theme-secondary rounded-3xl shadow-2xl p-8 max-w-md w-full">
             <button
               onClick={() => {
                 setStep('choice');
@@ -1364,7 +1389,7 @@ export default function Auth() {
                 {authMethod === 'email' && (
                   <form onSubmit={handleEmailLogin} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Email
                       </label>
                       <input
@@ -1378,7 +1403,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Senha
                       </label>
                       <div className="relative">
@@ -1438,7 +1463,7 @@ export default function Auth() {
                 {authMethod === 'phone' && (
                   <form onSubmit={handlePhoneLogin} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Telefone (com DDD)
                       </label>
                       <input
@@ -1460,7 +1485,7 @@ export default function Auth() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Senha
                       </label>
                       <div className="relative">
@@ -1532,7 +1557,7 @@ export default function Auth() {
                       <div className="w-full border-t border-gray-300"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-white text-gray-500">
+                      <span className="px-2 bg-theme-secondary text-gray-500">
                         Ou entre com
                       </span>
                     </div>
@@ -1541,7 +1566,7 @@ export default function Auth() {
                   <div className="mt-4">
                     <button
                       onClick={() => handleGoogleSignIn(false)}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition font-medium text-gray-700"
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition font-medium text-theme-secondary"
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path
@@ -1608,7 +1633,7 @@ export default function Auth() {
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   {resetMethod === 'email' ? (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Digite seu email cadastrado
                       </label>
                       <input
@@ -1625,7 +1650,7 @@ export default function Auth() {
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-theme-secondary mb-1">
                         Digite seu telefone cadastrado
                       </label>
                       <input
