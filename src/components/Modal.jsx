@@ -5,6 +5,7 @@ export default function Modal({
   onClose,
   title,
   message,
+  customContent,
   type = 'info',
   confirmText = 'OK',
   showCancel = false,
@@ -42,9 +43,13 @@ export default function Modal({
             </h3>
           )}
 
-          <p className="text-gray-600 text-center whitespace-pre-wrap">
-            {message}
-          </p>
+          {customContent ? (
+            <div>{customContent}</div>
+          ) : (
+            <p className="text-gray-600 text-center whitespace-pre-wrap">
+              {message}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-2 p-6 pt-0">

@@ -770,7 +770,7 @@ export default function Auth() {
     );
   }
 
-  if (user && profile && !profile.partnerId) {
+  if (user && profile) {
     return (
       <>
         <Toast />
@@ -779,76 +779,10 @@ export default function Auth() {
           onClose={() => setModal({ ...modal, isOpen: false })}
           title={modal.title}
           message={modal.message}
+          customContent={modal.customContent}
           type={modal.type}
           showCancel={modal.showCancel}
-          onConfirm={modal.onConfirm}
-        />
-        <div className="flex items-center justify-center min-h-screen p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-            <Heart className="w-16 h-16 text-pink-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-center mb-4">
-              Olá, {profile.name}! 💕
-            </h2>
-            <p className="text-gray-600 text-center mb-6">
-              Para começar a usar o Noo.us, você precisa vincular sua conta com
-              a do seu parceiro(a).
-            </p>
-
-            <form onSubmit={handleLinkPartner} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email ou Telefone do(a) Parceiro(a)
-                </label>
-                <input
-                  type="text"
-                  value={partnerIdentifier}
-                  onChange={(e) => setPartnerIdentifier(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  placeholder="email@exemplo.com ou (11) 99999-9999"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg flex items-center justify-center gap-2"
-              >
-                <LinkIcon className="w-5 h-5" />
-                Vincular Contas
-              </button>
-            </form>
-
-            <button
-              onClick={handleLogout}
-              className="w-full mt-4 px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition font-medium"
-            >
-              Sair
-            </button>
-
-            <div className="mt-6 p-4 bg-pink-50 rounded-xl">
-              <p className="text-sm text-gray-600">
-                💡 <strong>Dica:</strong> Seu parceiro(a) precisa criar uma
-                conta primeiro. Depois, você pode vincular usando o email ou
-                telefone cadastrado.
-              </p>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (user && profile && profile.partnerId) {
-    return (
-      <>
-        <Toast />
-        <Modal
-          isOpen={modal.isOpen}
-          onClose={() => setModal({ ...modal, isOpen: false })}
-          title={modal.title}
-          message={modal.message}
-          type={modal.type}
-          showCancel={modal.showCancel}
+          confirmText={modal.confirmText}
           onConfirm={modal.onConfirm}
         />
         <Dashboard
