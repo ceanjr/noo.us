@@ -4,21 +4,33 @@ service cloud.firestore {
     
     // Regras para a coleção de usuários
     match /users/{userId} {
-      // Permitir criar conta apenas se for o próprio usuário
-      allow create: if request.auth != null && request.auth.uid == userId;
-      
+      // Permitir criar conta (tanto autenticado quanto não autenticado para suportar cadastro)
+      allow create: if (request.auth != null && request.auth.uid == userId)
+                    || request.auth == null;
+
       // Permitir ler o próprio perfil
       allow read: if request.auth != null && request.auth.uid == userId;
-      
+
       // Permitir ler perfil do parceiro vinculado
-      allow read: if request.auth != null 
+      allow read: if request.auth != null
                   && resource.data.partnerId == request.auth.uid;
-      
+
+      // Permitir buscar usuários por email ou telefone (necessário para login e convites)
+      // Permitir leitura pública para suportar login
+      allow read: if true;
+
       // Permitir atualizar o próprio perfil
       allow update: if request.auth != null && request.auth.uid == userId;
-      
-      // Não permitir deletar
-      allow delete: if false;
+
+      // Permitir atualizar perfil de outro usuário APENAS para vinculação
+      // quando está definindo partnerId para si mesmo (aceitar convite)
+      allow update: if request.auth != null
+                    && request.resource.data.partnerId == request.auth.uid
+                    && request.resource.data.partnerName is string
+                    && request.resource.data.relationshipStart is string;
+
+      // Permitir deletar apenas se autenticado e for admin ou o próprio usuário
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
     
     // Regras para a coleção de surpresas
