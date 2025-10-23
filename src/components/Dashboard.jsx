@@ -6,7 +6,6 @@ import {
   query,
   where,
   onSnapshot,
-  orderBy,
   deleteDoc,
   doc,
   getDoc,
@@ -78,17 +77,28 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
     const q = query(
       collection(db, 'surprises'),
-      where('recipientId', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('recipientId', '==', userId)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const surprisesData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setSurprises(surprisesData);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const surprisesData = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .sort((a, b) => {
+            // Ordenar por data decrescente no cliente
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          });
+        setSurprises(surprisesData);
+      },
+      (error) => {
+        console.error('Erro ao carregar surpresas:', error);
+        showToast('Erro ao carregar surpresas', 'error');
+      }
+    );
 
     return () => unsubscribe();
   }, [userId]);
@@ -97,19 +107,35 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   useEffect(() => {
     if (!userId) return;
 
+    console.log('Configurando listener de notificações para userId:', userId);
+
     const q = query(
       collection(db, 'notifications'),
-      where('recipientId', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('recipientId', '==', userId)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notificationsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setNotifications(notificationsData);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        console.log('Notificações recebidas:', snapshot.docs.length);
+        const notificationsData = snapshot.docs
+          .map((doc) => {
+            const data = { id: doc.id, ...doc.data() };
+            console.log('Notificação:', data);
+            return data;
+          })
+          .sort((a, b) => {
+            // Ordenar por data decrescente no cliente
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          });
+        setNotifications(notificationsData);
+        console.log('Notificações pendentes:', notificationsData.filter(n => n.status === 'pending').length);
+      },
+      (error) => {
+        console.error('Erro ao carregar notificações:', error);
+        showToast('Erro ao carregar notificações: ' + error.message, 'error');
+      }
+    );
 
     return () => unsubscribe();
   }, [userId]);
@@ -206,7 +232,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
       }
 
       // Criar convite
-      await addDoc(collection(db, 'notifications'), {
+      const notificationData = {
         type: 'link_invite',
         senderId: userId,
         senderName: profile.name,
@@ -215,7 +241,11 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         senderDate: relationshipStartDate,
         status: 'pending',
         createdAt: new Date().toISOString(),
-      });
+      };
+
+      console.log('Criando notificação:', notificationData);
+      const docRef = await addDoc(collection(db, 'notifications'), notificationData);
+      console.log('Notificação criada com ID:', docRef.id);
 
       showToast('Convite enviado com sucesso!', 'success');
       setShowLinkPartner(false);
@@ -223,7 +253,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
       setRelationshipStartDate('');
     } catch (error) {
       console.error('Erro ao enviar convite:', error);
-      showToast('Erro ao enviar convite', 'error');
+      showToast(`Erro ao enviar convite: ${error.message}`, 'error');
     }
   };
 
