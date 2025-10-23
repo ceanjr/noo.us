@@ -1,344 +1,68 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { db } from '../lib/firebase';
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  onSnapshot,
-  deleteDoc,
-  doc,
-  getDoc,
-  updateDoc,
-  getDocs,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { showToast } from './Toast';
 import ProfileSettings from './ProfileSettings';
+import DashboardHeader from './dashboard/DashboardHeader';
+import BottomNavigation from './dashboard/BottomNavigation';
+import LinkPartnerModal from './dashboard/LinkPartnerModal';
+import CreateSurpriseModal from './dashboard/CreateSurpriseModal';
 import HeroCounter from './HeroCounter';
-import MomentCard from './MomentCard';
 import ConstellationView from './ConstellationView';
 import CreateMomentFAB from './CreateMomentFAB';
 import TimelineSlider from './TimelineSlider';
 import MomentOfDay from './MomentOfDay';
 import ImmersiveView from './ImmersiveView';
-import {
-  Heart,
-  MessageCircle,
-  Image as ImageIcon,
-  Music,
-  Calendar,
-  Gift,
-  LogOut,
-  Trash2,
-  Clock,
-  User,
-  X,
-  Send,
-  Check,
-  AlertCircle,
-  UserX,
-  Users,
-  Bell,
-  Link as LinkIcon,
-  Home,
-  Sparkles,
-  Settings,
-  Inbox,
-  Flame,
-  Plus,
-  Search,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
+import { useDashboardData } from '../hooks/useDashboardData';
+import { useMoments } from '../hooks/useMoments';
+import { usePartnerActions } from '../hooks/usePartnerActions';
+import { useNotificationActions } from '../hooks/useNotificationActions';
+import HomeTab from './dashboard/HomeTab';
+import SurprisesTab from './dashboard/SurprisesTab';
+import InboxTab from './dashboard/InboxTab';
+import { Home, Gift, Inbox, Eye, EyeOff, Sparkles, Search, Heart, User, Flame, Plus, LinkIcon, Calendar, X, Check, Users, Clock, Trash2, Music, MessageCircle, Image as ImageIcon } from 'lucide-react';
 
-// Constellation Feed Dashboard - Versão atualizada
 export default function Dashboard({ profile, onLogout, userId, setModal }) {
-  const [surprises, setSurprises] = useState([]);
-  const [showNewSurprise, setShowNewSurprise] = useState(false);
-  const [partnerProfile, setPartnerProfile] = useState(null);
-  const [notifications, setNotifications] = useState([]);
-  const [dateConflict, setDateConflict] = useState(null);
-  const [showLinkPartner, setShowLinkPartner] = useState(false);
-  const [partnerIdentifier, setPartnerIdentifier] = useState('');
-  const [relationshipStartDate, setRelationshipStartDate] = useState('');
+  // UI State
   const [activeTab, setActiveTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
-  const [newSurprise, setNewSurprise] = useState({
-    type: 'message',
-    content: '',
-    title: '',
-  });
-  const [viewMode, setViewMode] = useState('constellation'); // 'constellation' or 'immersive'
-  const [selectedPeriod, setSelectedPeriod] = useState('all');
-  const [moments, setMoments] = useState([]);
-  const [filteredMoments, setFilteredMoments] = useState([]);
-  const [momentOfDay, setMomentOfDay] = useState(null);
+  const [showLinkPartner, setShowLinkPartner] = useState(false);
+  const [showNewSurprise, setShowNewSurprise] = useState(false);
+  const [viewMode, setViewMode] = useState('constellation');
   const [isPrivateMode, setIsPrivateMode] = useState(false);
 
-  // Carregar perfil do parceiro
-  useEffect(() => {
-    const loadPartnerProfile = async () => {
-      if (profile.partnerId) {
-        try {
-          const partnerDoc = await getDoc(doc(db, 'users', profile.partnerId));
-          if (partnerDoc.exists()) {
-            setPartnerProfile(partnerDoc.data());
-          }
-        } catch (error) {
-          showToast('Erro ao carregar perfil do parceiro', 'error');
-        }
-      }
-    };
+  // Custom Hooks
+  const { surprises, notifications, dateConflict, partnerProfile, loading } = useDashboardData(
+    userId,
+    profile.partnerId
+  );
 
-    loadPartnerProfile();
-  }, [profile.partnerId]);
+  const {
+    moments,
+    filteredMoments,
+    momentOfDay,
+    selectedPeriod,
+    setSelectedPeriod,
+    musicCount,
+    photoCount,
+    streak,
+  } = useMoments(surprises);
 
-  // Carregar surpresas
-  useEffect(() => {
-    if (!userId) return;
+  const { handleSendLinkInvite, handleUnlinkPartner } = usePartnerActions(
+    userId,
+    profile,
+    setModal
+  );
 
-    const q = query(
-      collection(db, 'surprises'),
-      where('recipientId', '==', userId)
-    );
+  const {
+    acceptInvite,
+    rejectInvite,
+    respondToProposal,
+    dateChangeResponse,
+  } = useNotificationActions(userId, profile);
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const surprisesData = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
-          .sort((a, b) => {
-            return new Date(b.createdAt) - new Date(a.createdAt);
-          });
-        setSurprises(surprisesData);
-      },
-      (error) => {
-        console.error('Erro ao carregar surpresas:', error);
-        showToast('Erro ao carregar surpresas', 'error');
-      }
-    );
-
-    return () => unsubscribe();
-  }, [userId]);
-
-  // Converter surpresas em momentos
-  useEffect(() => {
-    const convertedMoments = surprises.map((surprise) => {
-      const createdDate = new Date(surprise.createdAt);
-      const now = new Date();
-      const diffDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
-
-      // Determinar o tamanho baseado no tipo e idade
-      let size = 'medium';
-      if (diffDays === 0) size = 'large';
-      else if (diffDays > 30) size = 'small';
-
-      // Determinar a cor do autor
-      const authorColors = [
-        'from-pink-500 to-rose-500',
-        'from-purple-500 to-indigo-500',
-        'from-blue-500 to-cyan-500',
-        'from-green-500 to-emerald-500',
-      ];
-      const colorIndex = surprise.senderName ? surprise.senderName.length % 4 : 0;
-
-      return {
-        id: surprise.id,
-        type: surprise.type,
-        title: surprise.title,
-        content: surprise.content,
-        author: surprise.senderName || 'Anônimo',
-        authorColor: authorColors[colorIndex],
-        date: createdDate.toLocaleDateString('pt-BR'),
-        reactions: surprise.reactions || [],
-        isPrivate: surprise.isPrivate || false,
-        size,
-        createdAt: surprise.createdAt,
-        daysAgo: diffDays,
-      };
-    });
-
-    setMoments(convertedMoments);
-
-    // Selecionar momento do dia (memória aleatória de mais de 7 dias atrás)
-    const oldMoments = convertedMoments.filter((m) => m.daysAgo >= 7);
-    if (oldMoments.length > 0) {
-      const randomIndex = Math.floor(Math.random() * oldMoments.length);
-      setMomentOfDay(oldMoments[randomIndex]);
-    }
-  }, [surprises]);
-
-  // Filtrar momentos por período
-  useEffect(() => {
-    const filterByPeriod = () => {
-      const now = new Date();
-
-      let filtered = moments;
-
-      if (selectedPeriod === 'today') {
-        filtered = moments.filter((m) => m.daysAgo === 0);
-      } else if (selectedPeriod === 'week') {
-        filtered = moments.filter((m) => m.daysAgo <= 7);
-      } else if (selectedPeriod === 'month') {
-        filtered = moments.filter((m) => m.daysAgo <= 30);
-      } else if (selectedPeriod === 'year') {
-        filtered = moments.filter((m) => m.daysAgo <= 365);
-      }
-
-      setFilteredMoments(filtered);
-    };
-
-    filterByPeriod();
-  }, [moments, selectedPeriod]);
-
-  // Carregar notificações
-  useEffect(() => {
-    if (!userId) return;
-
-    const q = query(
-      collection(db, 'notifications'),
-      where('recipientId', '==', userId)
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const notificationsData = snapshot.docs
-          .map((doc) => {
-            return { id: doc.id, ...doc.data() };
-          })
-          .sort((a, b) => {
-            return new Date(b.createdAt) - new Date(a.createdAt);
-          });
-        setNotifications(notificationsData);
-      },
-      (error) => {
-        console.error('Erro ao carregar notificações:', error);
-        showToast('Erro ao carregar notificações: ' + error.message, 'error');
-      }
-    );
-
-    return () => unsubscribe();
-  }, [userId]);
-
-  // Carregar conflito de data
-  useEffect(() => {
-    if (!userId || !profile.partnerId) return;
-
-    const q = query(
-      collection(db, 'dateConflicts'),
-      where('user1Id', '==', userId)
-    );
-
-    const q2 = query(
-      collection(db, 'dateConflicts'),
-      where('user2Id', '==', userId)
-    );
-
-    const unsubscribe1 = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        setDateConflict({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
-      }
-    });
-
-    const unsubscribe2 = onSnapshot(q2, (snapshot) => {
-      if (!snapshot.empty) {
-        setDateConflict({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
-      }
-    });
-
-    return () => {
-      unsubscribe1();
-      unsubscribe2();
-    };
-  }, [userId, profile.partnerId]);
-
-  const daysTogetherCalculator = () => {
-    if (!profile.relationshipStart) return 0;
-    const start = new Date(profile.relationshipStart);
-    const today = new Date();
-    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
-
-  const handleSendLinkInvite = async (e) => {
-    e.preventDefault();
-    try {
-      const usersRef = collection(db, 'users');
-      let q;
-
-      if (partnerIdentifier.includes('@')) {
-        q = query(usersRef, where('email', '==', partnerIdentifier));
-      } else {
-        const formattedPhone = partnerIdentifier.startsWith('+')
-          ? partnerIdentifier
-          : `+55${partnerIdentifier.replace(/\D/g, '')}`;
-        q = query(usersRef, where('phoneNumber', '==', formattedPhone));
-      }
-
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        showToast('Usuário não encontrado', 'error');
-        return;
-      }
-
-      const partnerDoc = querySnapshot.docs[0];
-      const partnerId = partnerDoc.id;
-      const partnerData = partnerDoc.data();
-
-      if (partnerId === userId) {
-        showToast('Você não pode vincular com você mesmo!', 'error');
-        return;
-      }
-
-      if (partnerData.partnerId) {
-        showToast('Este usuário já está vinculado a outra pessoa', 'error');
-        return;
-      }
-
-      const existingInvites = query(
-        collection(db, 'notifications'),
-        where('senderId', '==', userId),
-        where('recipientId', '==', partnerId),
-        where('type', '==', 'link_invite'),
-        where('status', '==', 'pending')
-      );
-      const existingSnapshot = await getDocs(existingInvites);
-
-      if (!existingSnapshot.empty) {
-        showToast('Você já enviou um convite para este usuário!', 'warning');
-        return;
-      }
-
-      const notificationData = {
-        type: 'link_invite',
-        senderId: userId,
-        senderName: profile.name,
-        recipientId: partnerId,
-        recipientName: partnerData.name,
-        senderDate: relationshipStartDate,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-
-      await addDoc(collection(db, 'notifications'), notificationData);
-
-      showToast('Convite enviado com sucesso!', 'success');
-      setShowLinkPartner(false);
-      setPartnerIdentifier('');
-      setRelationshipStartDate('');
-    } catch (error) {
-      console.error('Erro ao enviar convite:', error);
-      showToast(`Erro ao enviar convite: ${error.message}`, 'error');
-    }
-  };
-
-  const handleAcceptInvite = async (notification) => {
+  // Notification handlers with modal support
+  const handleAcceptInvite = (notification) => {
     setModal({
       isOpen: true,
       title: `Aceitar convite de ${notification.senderName}?`,
@@ -371,62 +95,12 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
       confirmText: 'Aceitar',
       onConfirm: async () => {
         const recipientDate = document.getElementById('recipient-date-input').value;
-        if (!recipientDate) {
-          showToast('Por favor, escolha a data!', 'warning');
-          return;
-        }
-
-        try {
-          const senderDate = notification.senderDate;
-          const areDatesEqual = senderDate === recipientDate;
-
-          await updateDoc(doc(db, 'users', userId), {
-            partnerId: notification.senderId,
-            partnerName: notification.senderName,
-            relationshipStart: recipientDate,
-          });
-
-          await updateDoc(doc(db, 'users', notification.senderId), {
-            partnerId: userId,
-            partnerName: profile.name,
-            relationshipStart: senderDate,
-          });
-
-          await updateDoc(doc(db, 'notifications', notification.id), {
-            status: 'accepted',
-            recipientDate: recipientDate,
-          });
-
-          if (!areDatesEqual) {
-            await addDoc(collection(db, 'dateConflicts'), {
-              user1Id: notification.senderId,
-              user1Name: notification.senderName,
-              user1Date: senderDate,
-              user2Id: userId,
-              user2Name: profile.name,
-              user2Date: recipientDate,
-              status: 'pending',
-              createdAt: new Date().toISOString(),
-            });
-
-            showToast(
-              'Vinculação realizada! Mas há uma surpresinha para vocês...',
-              'success'
-            );
-          } else {
-            showToast('Vinculação realizada com sucesso!', 'success');
-          }
-
-          window.location.reload();
-        } catch (error) {
-          console.error('Erro ao aceitar convite:', error);
-          showToast('Erro ao aceitar convite', 'error');
-        }
+        await acceptInvite(notification, recipientDate);
       },
     });
   };
 
-  const handleRejectInvite = async (notificationId) => {
+  const handleRejectInvite = (notificationId) => {
     setModal({
       isOpen: true,
       title: 'Rejeitar convite?',
@@ -435,176 +109,33 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
       showCancel: true,
       confirmText: 'Rejeitar',
       onConfirm: async () => {
-        try {
-          await updateDoc(doc(db, 'notifications', notificationId), {
-            status: 'rejected',
-          });
-          showToast('Convite rejeitado', 'success');
-        } catch (error) {
-          showToast('Erro ao rejeitar convite', 'error');
-        }
+        await rejectInvite(notificationId);
       },
     });
-  };
-
-  const handleDateChangeResponse = async (notification, accept) => {
-    try {
-      if (accept) {
-        await updateDoc(doc(db, 'users', userId), {
-          relationshipStart: notification.proposedDate,
-        });
-        await updateDoc(doc(db, 'users', notification.senderId), {
-          relationshipStart: notification.proposedDate,
-        });
-
-        showToast('Data atualizada com sucesso!', 'success');
-      }
-
-      await updateDoc(doc(db, 'notifications', notification.id), {
-        status: accept ? 'accepted' : 'rejected',
-      });
-
-      if (!accept) {
-        showToast('Solicitação rejeitada', 'success');
-      }
-
-      window.location.reload();
-    } catch (error) {
-      console.error('Erro ao responder solicitação:', error);
-      showToast('Erro ao responder solicitação', 'error');
-    }
-  };
-
-  const handleProposeNewDate = async (newDate) => {
-    if (!dateConflict) return;
-
-    try {
-      const isUser1 = dateConflict.user1Id === userId;
-      const updateData = isUser1
-        ? {
-            user1ProposedDate: newDate,
-            user1HasProposed: true,
-            lastProposedBy: userId,
-            lastProposedAt: new Date().toISOString(),
-          }
-        : {
-            user2ProposedDate: newDate,
-            user2HasProposed: true,
-            lastProposedBy: userId,
-            lastProposedAt: new Date().toISOString(),
-          };
-
-      await updateDoc(doc(db, 'dateConflicts', dateConflict.id), updateData);
-
-      const partnerId = isUser1 ? dateConflict.user2Id : dateConflict.user1Id;
-      const partnerName = isUser1 ? dateConflict.user2Name : dateConflict.user1Name;
-
-      await addDoc(collection(db, 'notifications'), {
-        type: 'date_proposal',
-        senderId: userId,
-        senderName: profile.name,
-        recipientId: partnerId,
-        recipientName: partnerName,
-        proposedDate: newDate,
-        conflictId: dateConflict.id,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      });
-
-      showToast('Proposta enviada! Aguarde a resposta do seu parceiro.', 'success');
-    } catch (error) {
-      console.error('Erro ao propor nova data:', error);
-      showToast('Erro ao propor nova data', 'error');
-    }
   };
 
   const handleRespondToProposal = async (notification, accept) => {
-    try {
-      if (accept) {
-        await updateDoc(doc(db, 'users', userId), {
-          relationshipStart: notification.proposedDate,
-        });
-        await updateDoc(doc(db, 'users', notification.senderId), {
-          relationshipStart: notification.proposedDate,
-        });
-
-        await deleteDoc(doc(db, 'dateConflicts', notification.conflictId));
-
-        showToast('Data acordada com sucesso!', 'success');
-      } else {
-        await updateDoc(doc(db, 'notifications', notification.id), {
-          status: 'rejected',
-        });
-        showToast('Proposta rejeitada', 'success');
-      }
-
-      await updateDoc(doc(db, 'notifications', notification.id), {
-        status: accept ? 'accepted' : 'rejected',
-      });
-
-      window.location.reload();
-    } catch (error) {
-      console.error('Erro ao responder proposta:', error);
-      showToast('Erro ao responder proposta', 'error');
-    }
+    await respondToProposal(notification, accept);
   };
 
-  const handleUnlinkPartner = async () => {
-    if (!profile.partnerId) return;
-
-    setModal({
-      isOpen: true,
-      title: 'Desvincular contas?',
-      message: `Tem certeza que deseja desvincular sua conta de ${profile.partnerName}? Todas as surpresas serão mantidas, mas vocês não estarão mais vinculados.`,
-      type: 'warning',
-      showCancel: true,
-      confirmText: 'Desvincular',
-      onConfirm: async () => {
-        try {
-          await updateDoc(doc(db, 'users', userId), {
-            partnerId: null,
-            partnerName: null,
-          });
-
-          await updateDoc(doc(db, 'users', profile.partnerId), {
-            partnerId: null,
-            partnerName: null,
-          });
-
-          const conflictsQuery = query(
-            collection(db, 'dateConflicts'),
-            where('user1Id', '==', userId)
-          );
-          const conflictsQuery2 = query(
-            collection(db, 'dateConflicts'),
-            where('user2Id', '==', userId)
-          );
-
-          const [snapshot1, snapshot2] = await Promise.all([
-            getDocs(conflictsQuery),
-            getDocs(conflictsQuery2),
-          ]);
-
-          const deletePromises = [
-            ...snapshot1.docs.map((doc) => deleteDoc(doc.ref)),
-            ...snapshot2.docs.map((doc) => deleteDoc(doc.ref)),
-          ];
-
-          await Promise.all(deletePromises);
-
-          showToast('Contas desvinculadas com sucesso', 'success');
-          window.location.reload();
-        } catch (error) {
-          console.error('Erro ao desvincular:', error);
-          showToast('Erro ao desvincular contas', 'error');
-        }
-      },
-    });
+  const handleDateChangeResponse = async (notification, accept) => {
+    await dateChangeResponse(notification, accept);
   };
 
-  const handleCreateSurprise = async (e) => {
-    e.preventDefault();
+  // Helpers
+  const daysTogetherCalculator = () => {
+    if (!profile.relationshipStart) return 0;
+    const start = new Date(profile.relationshipStart);
+    const today = new Date();
+    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
 
+  const daysTogether = daysTogetherCalculator();
+  const pendingNotifications = notifications.filter((n) => n.status === 'pending');
+
+  // Handlers
+  const handleCreateSurprise = async (newSurprise) => {
     if (!profile.partnerId) {
       showToast('Você precisa vincular com seu parceiro primeiro!', 'error');
       return;
@@ -623,8 +154,6 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         viewed: false,
       });
 
-      setNewSurprise({ type: 'message', content: '', title: '' });
-      setShowNewSurprise(false);
       showToast('Surpresa criada com sucesso!', 'success');
     } catch (error) {
       showToast('Erro ao criar surpresa', 'error');
@@ -650,39 +179,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
     });
   };
 
-  const getSurpriseIcon = (type) => {
-    switch (type) {
-      case 'message':
-        return <MessageCircle className="w-5 h-5" />;
-      case 'photo':
-        return <ImageIcon className="w-5 h-5" />;
-      case 'music':
-        return <Music className="w-5 h-5" />;
-      case 'date':
-        return <Calendar className="w-5 h-5" />;
-      default:
-        return <Gift className="w-5 h-5" />;
-    }
-  };
-
-  const getSurpriseGradient = (type) => {
-    switch (type) {
-      case 'message':
-        return 'from-blue-400 to-cyan-400';
-      case 'photo':
-        return 'from-purple-400 to-pink-400';
-      case 'music':
-        return 'from-green-400 to-emerald-400';
-      case 'date':
-        return 'from-orange-400 to-red-400';
-      default:
-        return 'from-pink-400 to-rose-400';
-    }
-  };
-
-  // Handlers para Constellation Feed
   const handleCreateMoment = (type) => {
-    setNewSurprise({ ...newSurprise, type });
     setShowNewSurprise(true);
   };
 
@@ -693,18 +190,14 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
       if (surpriseDoc.exists()) {
         const currentReactions = surpriseDoc.data().reactions || [];
-
-        // Verificar se usuário já reagiu com este emoji
         const existingReactionIndex = currentReactions.findIndex(
           (r) => r.userId === userId && r.emoji === emoji
         );
 
         let updatedReactions;
         if (existingReactionIndex >= 0) {
-          // Remover reação se já existe
           updatedReactions = currentReactions.filter((_, index) => index !== existingReactionIndex);
         } else {
-          // Adicionar nova reação
           updatedReactions = [
             ...currentReactions,
             {
@@ -730,57 +223,32 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
     setSelectedPeriod(period);
   };
 
-  const pendingNotifications = notifications.filter((n) => n.status === 'pending');
-  const daysTogether = daysTogetherCalculator();
-
-  // Estatísticas para HeroCounter
-  const musicCount = moments.filter((m) => m.type === 'music').length;
-  const photoCount = moments.filter((m) => m.type === 'photo').length;
-
-  // Calcular streak real baseado em atividade diária
-  const calculateStreak = () => {
-    if (moments.length === 0) return 0;
-
-    // Ordenar momentos por data (mais recente primeiro)
-    const sortedMoments = [...moments].sort((a, b) =>
-      new Date(b.createdAt) - new Date(a.createdAt)
-    );
-
-    let streak = 0;
-    let currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
-
-    // Verificar atividade consecutiva dia a dia
-    for (let i = 0; i < 365; i++) { // Máximo de 365 dias
-      const checkDate = new Date(currentDate);
-      checkDate.setDate(checkDate.getDate() - i);
-
-      // Verificar se há pelo menos um momento neste dia
-      const hasActivity = sortedMoments.some((moment) => {
-        const momentDate = new Date(moment.createdAt);
-        momentDate.setHours(0, 0, 0, 0);
-        return momentDate.getTime() === checkDate.getTime();
-      });
-
-      if (hasActivity) {
-        streak++;
-      } else if (i > 0) {
-        // Se não há atividade e não é o primeiro dia, quebra o streak
-        break;
-      }
-    }
-
-    return streak;
-  };
-
-  const streak = calculateStreak();
-
-  // Tab configs
+  // Tabs configuration
   const tabs = [
     { id: 'home', label: 'Início', icon: Home },
     { id: 'surprises', label: 'Surpresas', icon: Gift },
     { id: 'inbox', label: 'Caixa', icon: Inbox, badge: pendingNotifications.length },
   ];
+
+  const getSurpriseIcon = (type) => {
+    const icons = {
+      message: <MessageCircle className="w-5 h-5" />,
+      photo: <ImageIcon className="w-5 h-5" />,
+      music: <Music className="w-5 h-5" />,
+      date: <Calendar className="w-5 h-5" />,
+    };
+    return icons[type] || <Gift className="w-5 h-5" />;
+  };
+
+  const getSurpriseGradient = (type) => {
+    const gradients = {
+      message: 'from-blue-400 to-cyan-400',
+      photo: 'from-purple-400 to-pink-400',
+      music: 'from-green-400 to-emerald-400',
+      date: 'from-orange-400 to-red-400',
+    };
+    return gradients[type] || 'from-pink-400 to-rose-400';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 pb-20 md:pb-8">
@@ -794,720 +262,82 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         />
       )}
 
-      {/* Top Bar - Mobile Optimized */}
-      <div className="sticky top-0 z-40 bg-theme-secondary backdrop-blur-lg border-b border-theme shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-br from-primary-500 to-secondary-500 p-2 rounded-xl">
-                <Heart className="w-5 h-5 text-white" fill="white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
-                  noo.us
-                </h1>
-              </div>
-            </div>
-
-            {/* Right actions */}
-            <div className="flex items-center gap-2">
-              {pendingNotifications.length > 0 && (
-                <button
-                  onClick={() => setActiveTab('inbox')}
-                  className="relative p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <Bell className="w-5 h-5 text-primary-500" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                    {pendingNotifications.length}
-                  </span>
-                </button>
-              )}
-
-              <button
-                onClick={() => setShowSettings(true)}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              >
-                <Settings className="w-5 h-5 text-gray-600" />
-              </button>
-
-              <button
-                onClick={onLogout}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              >
-                <LogOut className="w-5 h-5 text-gray-600" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Header */}
+      <DashboardHeader
+        pendingNotificationsCount={pendingNotifications.length}
+        onNotificationsClick={() => setActiveTab('inbox')}
+        onSettingsClick={() => setShowSettings(true)}
+        onLogout={onLogout}
+      />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 sm:py-6">
-        {/* Home Tab */}
+        {/* HOME TAB */}
         {activeTab === 'home' && (
-          <div className="space-y-4">
-            {/* Profile Header - Mobile Optimized */}
-            <div className="bg-theme-secondary rounded-2xl shadow-lg p-4 sm:p-6">
-              <div className="flex items-center gap-3 sm:gap-4 mb-4">
-                <div className="relative flex-shrink-0">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-primary-400 via-secondary-400 to-accent-400 flex items-center justify-center shadow-lg overflow-hidden">
-                    {profile.photoURL ? (
-                      <img src={profile.photoURL} alt={profile.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                    )}
-                  </div>
-                  {profile.partnerId && (
-                    <div className="absolute -bottom-1 -right-1 bg-green-500 p-1 rounded-full">
-                      <Heart className="w-3 h-3 text-white" fill="white" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">
-                    {profile.name}
-                  </h2>
-                  {profile.partnerName && (
-                    <p className="text-sm sm:text-base text-gray-600 flex items-center gap-1 mt-1">
-                      <Heart className="w-4 h-4 text-primary-500" fill="currentColor" />
-                      <span className="truncate">Com {profile.partnerName}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Stats - Mobile Optimized */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-theme-secondary p-4 rounded-xl border-2 border-pink-300 shadow-sm">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="bg-gradient-to-br from-pink-500 to-rose-500 p-1.5 rounded-lg">
-                      <Flame className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-xs font-bold text-theme-secondary">Dias Juntos</span>
-                  </div>
-                  <div className="text-3xl sm:text-4xl font-black text-pink-600">{daysTogether}</div>
-                </div>
-
-                <div className="bg-theme-secondary p-4 rounded-xl border-2 border-purple-300 shadow-sm">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="bg-gradient-to-br from-purple-500 to-indigo-500 p-1.5 rounded-lg">
-                      <Gift className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-xs font-bold text-theme-secondary">Surpresas</span>
-                  </div>
-                  <div className="text-3xl sm:text-4xl font-black text-purple-600">{surprises.length}</div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                {!profile.partnerId ? (
-                  <button
-                    onClick={() => setShowLinkPartner(true)}
-                    className="flex-1 bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-3 px-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                  >
-                    <LinkIcon className="w-5 h-5" />
-                    <span>Vincular Parceiro</span>
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setShowNewSurprise(true)}
-                      className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span>Nova Surpresa</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Date Conflict */}
-            {dateConflict && dateConflict.status === 'pending' && (
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-lg p-4 sm:p-6 border-2 border-yellow-400">
-                <div className="text-center mb-4">
-                  <div className="text-5xl mb-3">😮</div>
-                  <h3 className="text-lg sm:text-xl font-bold text-theme-primary mb-2">
-                    Momento Surpresa!
-                  </h3>
-                  <p className="text-sm font-medium text-theme-secondary">
-                    Vocês têm memórias diferentes sobre quando começou esse amor!
-                  </p>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-3 mb-4">
-                  <div className="bg-theme-secondary p-4 rounded-xl border-2 border-pink-400 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="bg-pink-500 p-1.5 rounded-lg">
-                        <User className="w-3.5 h-3.5 text-white" />
-                      </div>
-                      <span className="font-bold text-theme-primary text-sm">{dateConflict.user1Name}</span>
-                    </div>
-                    <div className="text-xl font-black text-pink-600">
-                      {new Date(dateConflict.user1Date).toLocaleDateString('pt-BR')}
-                    </div>
-                  </div>
-
-                  <div className="bg-theme-secondary p-4 rounded-xl border-2 border-purple-400 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="bg-purple-500 p-1.5 rounded-lg">
-                        <User className="w-3.5 h-3.5 text-white" />
-                      </div>
-                      <span className="font-bold text-theme-primary text-sm">{dateConflict.user2Name}</span>
-                    </div>
-                    <div className="text-xl font-black text-purple-600">
-                      {new Date(dateConflict.user2Date).toLocaleDateString('pt-BR')}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setModal({
-                      isOpen: true,
-                      title: 'Propor nova data',
-                      customContent: (
-                        <div className="space-y-4">
-                          <p className="text-gray-600">
-                            Escolha a data que você quer propor:
-                          </p>
-                          <input
-                            type="date"
-                            id="new-date-input"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                          />
-                        </div>
-                      ),
-                      type: 'info',
-                      showCancel: true,
-                      confirmText: 'Propor',
-                      onConfirm: () => {
-                        const newDate = document.getElementById('new-date-input').value;
-                        if (newDate) {
-                          handleProposeNewDate(newDate);
-                        }
-                      },
-                    });
-                  }}
-                  className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <Calendar className="w-5 h-5" />
-                  Propor Nova Data
-                </button>
-              </div>
-            )}
-
-            {/* Quick Actions */}
-            {profile.partnerId && (
-              <div className="bg-theme-secondary rounded-2xl shadow-lg p-4">
-                <h3 className="font-bold text-theme-primary mb-3 text-sm">Ações Rápidas</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setActiveTab('surprises')}
-                    className="p-3 bg-theme-secondary hover:bg-purple-50 rounded-xl transition-all border-2 border-purple-300 hover:border-purple-400 flex flex-col items-center gap-1.5 shadow-sm hover:shadow-md"
-                  >
-                    <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
-                      <Gift className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-xs font-bold text-theme-primary">Ver Surpresas</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('inbox')}
-                    className="p-3 bg-theme-secondary hover:bg-blue-50 rounded-xl transition-all border-2 border-blue-300 hover:border-blue-400 flex flex-col items-center gap-1.5 shadow-sm hover:shadow-md"
-                  >
-                    <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-2 rounded-lg">
-                      <Inbox className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-xs font-bold text-theme-primary">Caixa de Entrada</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <HomeTab
+            profile={profile}
+            daysTogether={daysTogether}
+            surprisesCount={surprises.length}
+            onLinkPartner={() => setShowLinkPartner(true)}
+            onCreateSurprise={() => setShowNewSurprise(true)}
+            onNavigateToSurprises={() => setActiveTab('surprises')}
+            onNavigateToInbox={() => setActiveTab('inbox')}
+          />
         )}
 
-        {/* Constellation Feed Tab */}
+        {/* SURPRISES TAB */}
         {activeTab === 'surprises' && (
-          <div className="space-y-4">
-            {/* Hero Counter */}
-            <HeroCounter
-              daysTogether={daysTogether}
-              musicCount={musicCount}
-              photoCount={photoCount}
-              streak={streak}
-            />
-
-            {/* Moment of Day */}
-            {momentOfDay && <MomentOfDay moment={momentOfDay} />}
-
-            {/* Controls Bar */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              {/* Timeline Slider */}
-              <div className="flex-1 min-w-[200px]">
-                <TimelineSlider onPeriodChange={handlePeriodChange} />
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* Private Mode Toggle */}
-                <button
-                  onClick={() => setIsPrivateMode(!isPrivateMode)}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all border shadow-sm ${
-                    isPrivateMode
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-purple-500'
-                      : 'bg-theme-secondary text-theme-secondary border-border-color hover:bg-purple-500/10'
-                  }`}
-                  title={isPrivateMode ? 'Modo Privado Ativo' : 'Ativar Modo Privado'}
-                >
-                  {isPrivateMode ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-
-                {/* View Mode Toggle */}
-                <div className="flex items-center gap-2 bg-theme-secondary rounded-xl p-1 border border-border-color shadow-sm">
-                  <button
-                    onClick={() => setViewMode('constellation')}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      viewMode === 'constellation'
-                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md'
-                        : 'text-theme-secondary hover:bg-primary-500/10'
-                    }`}
-                    title="Modo Constelação"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('immersive')}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      viewMode === 'immersive'
-                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md'
-                        : 'text-theme-secondary hover:bg-primary-500/10'
-                    }`}
-                    title="Modo Imersivo"
-                  >
-                    <Search className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Constellation or Immersive View */}
-            {filteredMoments.length === 0 ? (
-              <div className="bg-theme-secondary rounded-2xl shadow-lg p-8 text-center">
-                <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-gray-400 mb-2">
-                  Nenhum momento neste período...
-                </h3>
-                <p className="text-gray-500 text-sm">
-                  {profile.partnerName
-                    ? `Experimente outro período ou crie novos momentos com ${profile.partnerName}!`
-                    : 'Vincule sua conta para começar a receber momentos especiais!'}
-                </p>
-              </div>
-            ) : viewMode === 'constellation' ? (
-              <ConstellationView
-                moments={filteredMoments}
-                onReact={handleReact}
-                isPrivateMode={isPrivateMode}
-              />
-            ) : (
-              <ImmersiveView
-                moments={filteredMoments}
-                onReact={handleReact}
-                isPrivateMode={isPrivateMode}
-                onClose={() => setViewMode('constellation')}
-              />
-            )}
-
-            {/* FAB - Create Moment */}
-            {profile.partnerId && (
-              <CreateMomentFAB onCreate={handleCreateMoment} />
-            )}
-          </div>
+          <SurprisesTab
+            daysTogether={daysTogether}
+            musicCount={musicCount}
+            photoCount={photoCount}
+            streak={streak}
+            momentOfDay={momentOfDay}
+            filteredMoments={filteredMoments}
+            viewMode={viewMode}
+            isPrivateMode={isPrivateMode}
+            hasPartner={!!profile.partnerId}
+            partnerName={profile.partnerName}
+            onPeriodChange={handlePeriodChange}
+            onViewModeChange={setViewMode}
+            onPrivateModeToggle={() => setIsPrivateMode(!isPrivateMode)}
+            onReact={handleReact}
+            onCreateMoment={handleCreateMoment}
+          />
         )}
 
-        {/* Inbox Tab */}
+        {/* INBOX TAB */}
         {activeTab === 'inbox' && (
-          <div className="space-y-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Caixa de Entrada</h2>
-
-            {pendingNotifications.length === 0 ? (
-              <div className="bg-theme-secondary rounded-2xl shadow-lg p-8 text-center">
-                <Inbox className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-gray-400 mb-2">
-                  Nenhuma notificação pendente
-                </h3>
-                <p className="text-gray-500 text-sm">
-                  Você está em dia com tudo!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {pendingNotifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="bg-theme-secondary rounded-2xl shadow-lg p-4 border-2 border-pink-300"
-                  >
-                    {notification.type === 'link_invite' && (
-                      <div>
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="bg-gradient-to-br from-pink-500 to-purple-500 p-3 rounded-xl shadow-md flex-shrink-0">
-                            <Users className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-base text-theme-primary mb-0.5">
-                              Convite de {notification.senderName}
-                            </h3>
-                            <p className="text-sm font-medium text-theme-secondary">
-                              Quer conectar com você!
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAcceptInvite(notification)}
-                            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                          >
-                            <Check className="w-4 h-4" />
-                            Aceitar
-                          </button>
-                          <button
-                            onClick={() => handleRejectInvite(notification.id)}
-                            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                          >
-                            <X className="w-4 h-4" />
-                            Rejeitar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {notification.type === 'date_proposal' && (
-                      <div>
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="bg-gradient-to-br from-purple-500 to-indigo-500 p-3 rounded-xl shadow-md flex-shrink-0">
-                            <Calendar className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-base text-theme-primary mb-0.5">
-                              Proposta de {notification.senderName}
-                            </h3>
-                            <p className="text-sm font-medium text-theme-secondary">
-                              Nova data: <strong className="text-purple-600">{new Date(notification.proposedDate).toLocaleDateString('pt-BR')}</strong>
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleRespondToProposal(notification, true)}
-                            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all"
-                          >
-                            Concordar
-                          </button>
-                          <button
-                            onClick={() => handleRespondToProposal(notification, false)}
-                            className="flex-1 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all"
-                          >
-                            Discordar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {notification.type === 'date_change_request' && (
-                      <div>
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="bg-gradient-to-br from-orange-500 to-amber-500 p-3 rounded-xl shadow-md flex-shrink-0">
-                            <Calendar className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-base text-theme-primary mb-0.5">
-                              Mudança de Data
-                            </h3>
-                            <p className="text-sm font-medium text-theme-secondary">
-                              {notification.senderName} quer mudar para <strong className="text-orange-600">{new Date(notification.proposedDate).toLocaleDateString('pt-BR')}</strong>
-                            </p>
-                            {notification.reason && (
-                              <p className="text-sm text-gray-600 mt-2 p-2 bg-gray-50 rounded-lg italic">
-                                "{notification.reason}"
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleDateChangeResponse(notification, true)}
-                            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all"
-                          >
-                            Aprovar
-                          </button>
-                          <button
-                            onClick={() => handleDateChangeResponse(notification, false)}
-                            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg"
-                          >
-                            Recusar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <InboxTab
+            notifications={pendingNotifications}
+            onAcceptInvite={handleAcceptInvite}
+            onRejectInvite={handleRejectInvite}
+            onRespondToProposal={handleRespondToProposal}
+            onDateChangeResponse={handleDateChangeResponse}
+          />
         )}
       </div>
 
-      {/* Bottom Navigation - Mobile Only */}
-      <div className="fixed bottom-0 left-0 right-0 bg-theme-secondary border-t border-theme shadow-lg md:hidden z-50">
-        <div className="flex items-center justify-around py-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all relative ${
-                  isActive
-                    ? 'text-primary-600'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Icon className={`w-6 h-6 ${isActive ? 'scale-110' : ''} transition-transform`} />
-                <span className={`text-xs font-medium ${isActive ? 'font-bold' : ''}`}>
-                  {tab.label}
-                </span>
-                {tab.badge > 0 && (
-                  <span className="absolute top-0 right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* Bottom Navigation */}
+      <BottomNavigation
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
-      {/* Desktop Tab Navigation */}
-      <div className="hidden md:block fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-        <div className="bg-theme-secondary/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-theme p-2 flex gap-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all relative ${
-                  isActive
-                    ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow-lg'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span>{tab.label}</span>
-                {tab.badge > 0 && (
-                  <span className="bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Modal Nova Surpresa */}
-      {showNewSurprise && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-theme-secondary rounded-3xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-xl">
-                  <Gift className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Nova Surpresa</h3>
-              </div>
-              <button
-                onClick={() => setShowNewSurprise(false)}
-                className="text-gray-400 hover:text-gray-600 transition-all p-2 hover:bg-gray-100 rounded-xl"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSurprise} className="space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-theme-secondary mb-3">
-                  Tipo de Surpresa
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['message', 'photo', 'music', 'date'].map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setNewSurprise({ ...newSurprise, type })}
-                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${
-                        newSurprise.type === type
-                          ? 'border-primary-500 bg-gradient-to-br from-primary-50 to-secondary-50 shadow-md scale-105'
-                          : 'border-theme hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className={`${newSurprise.type === type ? 'text-primary-600' : 'text-gray-600'}`}>
-                        {getSurpriseIcon(type)}
-                      </div>
-                      <span className="text-xs font-medium capitalize">{type}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-theme-secondary mb-2">
-                  Título
-                </label>
-                <input
-                  type="text"
-                  value={newSurprise.title}
-                  onChange={(e) =>
-                    setNewSurprise({ ...newSurprise, title: e.target.value })
-                  }
-                  className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                  placeholder="Ex: Para você, com amor"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-theme-secondary mb-2">
-                  {newSurprise.type === 'music'
-                    ? 'Link da Música'
-                    : newSurprise.type === 'photo'
-                    ? 'URL da Imagem'
-                    : 'Mensagem'}
-                </label>
-                <textarea
-                  value={newSurprise.content}
-                  onChange={(e) =>
-                    setNewSurprise({
-                      ...newSurprise,
-                      content: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[120px] transition-all"
-                  placeholder={
-                    newSurprise.type === 'music'
-                      ? 'Cole o link aqui...'
-                      : newSurprise.type === 'photo'
-                      ? 'Cole o URL da imagem aqui...'
-                      : 'Escreva sua mensagem aqui...'
-                  }
-                  required
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowNewSurprise(false)}
-                  className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all font-bold text-theme-secondary"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all font-bold shadow-lg hover:shadow-xl"
-                >
-                  Criar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Modals */}
+      {showLinkPartner && (
+        <LinkPartnerModal
+          onClose={() => setShowLinkPartner(false)}
+          onSubmit={handleSendLinkInvite}
+        />
       )}
 
-      {/* Modal Vincular Parceiro */}
-      {showLinkPartner && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-theme-secondary rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-gradient-to-br from-primary-500 to-secondary-500 p-2 rounded-xl">
-                  <LinkIcon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Vincular Parceiro</h3>
-              </div>
-              <button
-                onClick={() => setShowLinkPartner(false)}
-                className="text-gray-400 hover:text-gray-600 transition-all p-2 hover:bg-gray-100 rounded-xl"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSendLinkInvite} className="space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-theme-secondary mb-2">
-                  Email ou Telefone do(a) Parceiro(a)
-                </label>
-                <input
-                  type="text"
-                  value={partnerIdentifier}
-                  onChange={(e) => setPartnerIdentifier(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                  placeholder="email@exemplo.com ou (11) 99999-9999"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-theme-secondary mb-2">
-                  Quando começou o namoro?
-                </label>
-                <input
-                  type="date"
-                  value={relationshipStartDate}
-                  onChange={(e) => setRelationshipStartDate(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                  required
-                />
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
-                <div className="flex items-start gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-theme-secondary">
-                    Seu parceiro receberá um convite e também informará a data que lembra.
-                    Se as datas forem diferentes, vocês poderão resolver juntos!
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowLinkPartner(false)}
-                  className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all font-bold text-theme-secondary"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl hover:from-primary-600 hover:to-secondary-600 transition-all font-bold shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-                >
-                  <Send className="w-5 h-5" />
-                  Enviar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showNewSurprise && (
+        <CreateSurpriseModal
+          onClose={() => setShowNewSurprise(false)}
+          onSubmit={handleCreateSurprise}
+        />
       )}
     </div>
   );

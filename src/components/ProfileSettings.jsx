@@ -1,7 +1,17 @@
 import { useState } from 'react';
 import { db, auth } from '../lib/firebase';
-import { updateDoc, doc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import {
+  updateDoc,
+  doc,
+  addDoc,
+  collection,
+  serverTimestamp,
+} from 'firebase/firestore';
+import {
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+} from 'firebase/auth';
 import { showToast } from './Toast';
 import {
   User,
@@ -23,7 +33,12 @@ import { useTheme } from '../contexts/ThemeContext';
 
 const SALT_KEY = 'noo_us_secure_v1';
 
-export default function ProfileSettings({ profile, userId, onClose, setModal }) {
+export default function ProfileSettings({
+  profile,
+  userId,
+  onClose,
+  setModal,
+}) {
   const [activeSection, setActiveSection] = useState('profile');
   const [loading, setLoading] = useState(false);
   const { currentTheme, changeTheme, themes } = useTheme();
@@ -41,7 +56,9 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Date change data
-  const [newRelationshipDate, setNewRelationshipDate] = useState(profile.relationshipStart || '');
+  const [newRelationshipDate, setNewRelationshipDate] = useState(
+    profile.relationshipStart || ''
+  );
   const [dateChangeReason, setDateChangeReason] = useState('');
 
   const hashPassword = (password) => {
@@ -132,7 +149,11 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
     setModal({
       isOpen: true,
       title: 'Solicitar Mudança de Data?',
-      message: `Você está solicitando mudar a data de início do relacionamento para ${new Date(newRelationshipDate).toLocaleDateString('pt-BR')}. ${profile.partnerName} receberá uma notificação para aprovar.`,
+      message: `Você está solicitando mudar a data de início do relacionamento para ${new Date(
+        newRelationshipDate
+      ).toLocaleDateString('pt-BR')}. ${
+        profile.partnerName
+      } receberá uma notificação para aprovar.`,
       type: 'info',
       showCancel: true,
       confirmText: 'Enviar Solicitação',
@@ -153,7 +174,10 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
             createdAt: new Date().toISOString(),
           });
 
-          showToast('Solicitação enviada! Aguarde a resposta do seu parceiro 💕', 'success');
+          showToast(
+            'Solicitação enviada! Aguarde a resposta do seu parceiro 💕',
+            'success'
+          );
           setDateChangeReason('');
           onClose();
         } catch (error) {
@@ -181,7 +205,9 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">Configurações</h2>
-              <p className="text-sm text-white/80 mt-1">Gerencie seu perfil e preferências</p>
+              <p className="text-sm text-white/80 mt-1">
+                Gerencie seu perfil e preferências
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -222,7 +248,11 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                 <div className="relative inline-block">
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary-400 to-secondary-400 flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-4 mx-auto overflow-hidden">
                     {photoURL ? (
-                      <img src={photoURL} alt={name} className="w-full h-full object-cover" />
+                      <img
+                        src={photoURL}
+                        alt={name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <User className="w-16 h-16" />
                     )}
@@ -245,7 +275,8 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                   placeholder="https://exemplo.com/foto.jpg"
                 />
                 <p className="mt-2 text-xs text-gray-500">
-                  Cole o link de uma imagem da internet (ex: Imgur, Google Photos)
+                  Cole o link de uma imagem da internet (ex: Imgur, Google
+                  Photos)
                 </p>
               </div>
 
@@ -270,19 +301,28 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                       <div className="bg-blue-500 p-1.5 rounded-lg">
                         <Mail className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <span><strong>Email:</strong> {profile.email}</span>
+                      <span>
+                        <strong>Email:</strong> {profile.email}
+                      </span>
                     </>
                   ) : (
                     <>
                       <div className="bg-blue-500 p-1.5 rounded-lg">
                         <Phone className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <span><strong>Telefone:</strong> {profile.phoneNumber}</span>
+                      <span>
+                        <strong>Telefone:</strong> {profile.phoneNumber}
+                      </span>
                     </>
                   )}
                 </div>
                 <p className="text-xs font-medium text-theme-secondary">
-                  Método de autenticação: {profile.authMethod === 'email' ? 'Email' : profile.authMethod === 'phone' ? 'Telefone' : 'Google'}
+                  Método de autenticação:{' '}
+                  {profile.authMethod === 'email'
+                    ? 'Email'
+                    : profile.authMethod === 'phone'
+                    ? 'Telefone'
+                    : 'Google'}
                 </p>
               </div>
 
@@ -306,9 +346,12 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                     <AlertCircle className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <p className="font-bold text-theme-primary mb-1">Segurança da Senha</p>
+                    <p className="font-bold text-theme-primary mb-1">
+                      Segurança da Senha
+                    </p>
                     <p className="text-sm font-medium text-theme-secondary">
-                      Use uma senha forte com no mínimo 6 caracteres, incluindo letras e números.
+                      Use uma senha forte com no mínimo 6 caracteres, incluindo
+                      letras e números.
                     </p>
                   </div>
                 </div>
@@ -330,10 +373,16 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                     />
                     <button
                       type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      onClick={() =>
+                        setShowCurrentPassword(!showCurrentPassword)
+                      }
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      {showCurrentPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -358,7 +407,11 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                     onClick={() => setShowNewPassword(!showNewPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showNewPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -381,7 +434,11 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -406,10 +463,14 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                     <Calendar className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <p className="font-bold text-theme-primary mb-1">Data Atual</p>
+                    <p className="font-bold text-theme-primary mb-1">
+                      Data Atual
+                    </p>
                     <p className="text-xl font-black text-purple-600">
                       {profile.relationshipStart
-                        ? new Date(profile.relationshipStart).toLocaleDateString('pt-BR')
+                        ? new Date(
+                            profile.relationshipStart
+                          ).toLocaleDateString('pt-BR')
                         : 'Não definida'}
                     </p>
                   </div>
@@ -449,10 +510,13 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                         <AlertCircle className="w-4 h-4 text-white" />
                       </div>
                       <div>
-                        <p className="font-bold text-theme-primary mb-1">Atenção</p>
+                        <p className="font-bold text-theme-primary mb-1">
+                          Atenção
+                        </p>
                         <p className="text-sm font-medium text-theme-secondary">
-                          {profile.partnerName} receberá uma notificação e precisará aprovar a mudança.
-                          Ambos precisam concordar para a data ser alterada.
+                          {profile.partnerName} receberá uma notificação e
+                          precisará aprovar a mudança. Ambos precisam concordar
+                          para a data ser alterada.
                         </p>
                       </div>
                     </div>
@@ -471,7 +535,8 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                 <div className="text-center py-8">
                   <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">
-                    Você precisa estar vinculado a um parceiro para alterar a data do relacionamento.
+                    Você precisa estar vinculado a um parceiro para alterar a
+                    data do relacionamento.
                   </p>
                 </div>
               )}
@@ -482,7 +547,9 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
           {activeSection === 'theme' && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-theme-primary mb-2">Aparência</h3>
+                <h3 className="text-lg font-bold text-theme-primary mb-2">
+                  Aparência
+                </h3>
                 <p className="text-sm text-theme-secondary">
                   Escolha entre o modo claro ou escuro
                 </p>
@@ -496,7 +563,10 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                       key={themeId}
                       onClick={() => {
                         changeTheme(themeId);
-                        showToast(`${theme.name} ativado! ${theme.icon}`, 'success');
+                        showToast(
+                          `${theme.name} ativado! ${theme.icon}`,
+                          'success'
+                        );
                       }}
                       className={`relative p-6 rounded-2xl border-2 transition-all duration-300 ${
                         isActive
@@ -512,8 +582,12 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
 
                       <div className="text-center">
                         <div className="text-5xl mb-3">{theme.icon}</div>
-                        <h3 className="font-bold text-theme-primary mb-1">{theme.name}</h3>
-                        <p className="text-xs text-theme-secondary">{theme.description}</p>
+                        <h3 className="font-bold text-theme-primary mb-1">
+                          {theme.name}
+                        </h3>
+                        <p className="text-xs text-theme-secondary">
+                          {theme.description}
+                        </p>
                       </div>
 
                       <div className="flex gap-2 mt-4 justify-center">
@@ -541,9 +615,12 @@ export default function ProfileSettings({ profile, userId, onClose, setModal }) 
                     <AlertCircle className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <p className="font-bold text-theme-primary mb-1">Sincronização Automática</p>
+                    <p className="font-bold text-theme-primary mb-1">
+                      Sincronização Automática
+                    </p>
                     <p className="text-sm font-medium text-theme-secondary">
-                      Sua preferência será salva e sincronizada em todos os seus dispositivos.
+                      Sua preferência será salva e sincronizada em todos os seus
+                      dispositivos.
                     </p>
                   </div>
                 </div>
