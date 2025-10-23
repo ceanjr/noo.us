@@ -24,6 +24,7 @@ import {
   getDocs,
   updateDoc,
   serverTimestamp,
+  deleteDoc,
 } from 'firebase/firestore';
 import Dashboard from './Dashboard';
 import Toast, { showToast } from './Toast';
@@ -43,21 +44,16 @@ import {
 } from 'lucide-react';
 import CryptoJS from 'crypto-js';
 
-// Constantes de segurança
 const PASSWORD_MIN_LENGTH = 6;
-const SALT_KEY = 'noo_us_secure_v1'; // Em produção, use variável de ambiente
-
-// Provider para login social
+const SALT_KEY = 'noo_us_secure_v1';
 const googleProvider = new GoogleAuthProvider();
 
 export default function Auth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
-
   const [step, setStep] = useState('choice');
   const [authMethod, setAuthMethod] = useState('email');
-
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,25 +61,19 @@ export default function Auth() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [relationshipStart, setRelationshipStart] = useState('');
   const [partnerIdentifier, setPartnerIdentifier] = useState('');
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-
   const [phoneError, setPhoneError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [showVerificationStep, setShowVerificationStep] = useState(false);
   const [recaptchaVerifier, setRecaptchaVerifier] = useState(null);
-  const [recaptchaWidgetId, setRecaptchaWidgetId] = useState(null);
-
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetPhone, setResetPhone] = useState('');
   const [resetMethod, setResetMethod] = useState('email');
-
   const [modal, setModal] = useState({
     isOpen: false,
     title: '',
@@ -91,21 +81,20 @@ export default function Auth() {
     type: 'info',
   });
 
-  // Hash de senha seguro (client-side para Firestore, o Firebase Auth usa sua própria segurança)
   const hashPassword = (password) => {
     return CryptoJS.SHA256(password + SALT_KEY).toString();
   };
 
-  // Inicializar ou reinicializar reCAPTCHA
+  const verifyPassword = (password, hash) => {
+    return hashPassword(password) === hash;
+  };
+
   const setupRecaptcha = () => {
     try {
-      // Reaproveitar se já existe
       if (recaptchaVerifier && recaptchaVerifier.verifier) {
-        console.log('ReCAPTCHA já inicializado, reaproveitando...');
         return recaptchaVerifier;
       }
 
-      // Limpar reCAPTCHA anterior se existir
       if (recaptchaVerifier && typeof recaptchaVerifier.clear === 'function') {
         try {
           recaptchaVerifier.clear();
@@ -116,22 +105,15 @@ export default function Auth() {
         }
       }
 
-      // Limpar o container
       const container = document.getElementById('recaptcha-container');
       if (container) {
         container.innerHTML = '';
       }
 
-      // Criar novo reCAPTCHA
       const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
-        callback: (response) => {
-          console.log('reCAPTCHA resolvido');
-        },
-        'expired-callback': () => {
-          console.log('reCAPTCHA expirado');
-          setupRecaptcha(); // Reinicializar se expirar
-        },
+        callback: () => console.log('reCAPTCHA resolvido'),
+        'expired-callback': () => setupRecaptcha(),
       });
 
       setRecaptchaVerifier(verifier);
@@ -142,7 +124,6 @@ export default function Auth() {
     }
   };
 
-  // Configurar persistência ao iniciar
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -154,23 +135,16 @@ export default function Auth() {
     initAuth();
   }, []);
 
-  // Configurar reCAPTCHA quando necessário
   useEffect(() => {
-    if ((step === 'signup' || step === 'login') && authMethod === 'phone') {
-      // Aguardar o DOM estar pronto
-      setTimeout(() => {
-        setupRecaptcha();
-      }, 100);
+    if (step === 'signup' && authMethod === 'phone') {
+      setTimeout(() => setupRecaptcha(), 100);
     }
 
-    // Cleanup ao desmontar ou mudar de step
     return () => {
       if (recaptchaVerifier) {
         try {
           recaptchaVerifier.clear();
-        } catch (e) {
-          console.log('Erro ao limpar reCAPTCHA no cleanup:', e);
-        }
+        } catch (e) {}
       }
     };
   }, [step, authMethod]);
@@ -192,10 +166,8 @@ export default function Auth() {
 
   const validateBrazilPhone = (phone) => {
     const cleaned = phone.replace(/\D/g, '');
-
-    if (cleaned.length !== 11) {
+    if (cleaned.length !== 11)
       return 'O telefone deve ter 11 dígitos (DDD + número)';
-    }
 
     const validDDDs = [
       '11',
@@ -268,14 +240,8 @@ export default function Auth() {
     ];
 
     const ddd = cleaned.substring(0, 2);
-    if (!validDDDs.includes(ddd)) {
-      return 'DDD inválido';
-    }
-
-    if (cleaned[2] !== '9') {
-      return 'Número de celular deve começar com 9';
-    }
-
+    if (!validDDDs.includes(ddd)) return 'DDD inválido';
+    if (cleaned[2] !== '9') return 'Número de celular deve começar com 9';
     return null;
   };
 
@@ -283,28 +249,22 @@ export default function Auth() {
     if (pass.length < PASSWORD_MIN_LENGTH) {
       return `Senha deve ter no mínimo ${PASSWORD_MIN_LENGTH} caracteres`;
     }
-
     if (confirmPass !== null && pass !== confirmPass) {
       return 'As senhas não coincidem';
     }
-
-    // Validação básica de força
     const hasNumber = /\d/.test(pass);
     const hasLetter = /[a-zA-Z]/.test(pass);
-
     if (!hasNumber || !hasLetter) {
       return 'Senha deve conter letras e números';
     }
-
     return null;
   };
 
   const formatPhoneDisplay = (phone) => {
     const cleaned = phone.replace(/\D/g, '');
     if (cleaned.length <= 2) return cleaned;
-    if (cleaned.length <= 7) {
+    if (cleaned.length <= 7)
       return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2)}`;
-    }
     return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(
       7,
       11
@@ -330,18 +290,14 @@ export default function Auth() {
     }
   };
 
-  // Função para enviar SMS de verificação
   const sendPhoneVerification = async (phoneNumber) => {
     try {
       const formattedPhone = `+55${phoneNumber}`;
-
-      // Garantir que o reCAPTCHA está configurado
       let verifier = recaptchaVerifier;
       if (!verifier) {
         verifier = setupRecaptcha();
-        if (!verifier) {
+        if (!verifier)
           throw new Error('Não foi possível configurar o reCAPTCHA');
-        }
       }
 
       const result = await signInWithPhoneNumber(
@@ -349,43 +305,34 @@ export default function Auth() {
         formattedPhone,
         verifier
       );
-
       setConfirmationResult(result);
       setShowVerificationStep(true);
       showToast('Código enviado via SMS! 📱', 'success');
-
       return result;
     } catch (error) {
       console.error('Erro ao enviar SMS:', error);
-
       if (error.code === 'auth/invalid-phone-number') {
         showToast('Número de telefone inválido', 'error');
       } else if (error.code === 'auth/too-many-requests') {
         showToast('Muitas tentativas. Aguarde alguns minutos', 'error');
       } else if (error.message.includes('reCAPTCHA')) {
         showToast('Erro de verificação. Tente novamente', 'error');
-        // Reconfigurar reCAPTCHA
         setTimeout(() => setupRecaptcha(), 500);
       } else {
         showToast('Erro ao enviar código. Tente novamente', 'error');
       }
-
       throw error;
     }
   };
 
-  // Função para verificar código SMS
   const verifyPhoneCode = async () => {
     try {
-      if (!confirmationResult) {
+      if (!confirmationResult)
         throw new Error('Nenhum código pendente de verificação');
-      }
-
       const result = await confirmationResult.confirm(verificationCode);
       return result.user;
     } catch (error) {
       console.error('Erro ao verificar código:', error);
-
       if (error.code === 'auth/invalid-verification-code') {
         showToast('Código inválido. Verifique e tente novamente', 'error');
       } else if (error.code === 'auth/code-expired') {
@@ -393,29 +340,22 @@ export default function Auth() {
       } else {
         showToast('Erro ao verificar código', 'error');
       }
-
       throw error;
     }
   };
 
-  // Login com Google
   const handleGoogleSignIn = async (isSignup = false) => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-
-      // Verificar se é usuário novo
       const userDoc = await getDoc(doc(db, 'users', user.uid));
 
       if (!userDoc.exists()) {
         if (!isSignup) {
-          // Se está tentando fazer login mas não tem cadastro
           await signOut(auth);
           showToast('Conta não encontrada. Crie uma conta primeiro', 'error');
           return;
         }
-
-        // Criar novo usuário
         await setDoc(doc(db, 'users', user.uid), {
           name: user.displayName || 'Usuário',
           email: user.email,
@@ -429,19 +369,23 @@ export default function Auth() {
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
         });
-
         showToast('Conta criada com sucesso! 💝', 'success');
+
+        // Carregar perfil e atualizar estado
+        await loadProfile(user.uid);
+        setUser(user);
       } else {
-        // Atualizar último login
         await updateDoc(doc(db, 'users', user.uid), {
           lastLogin: serverTimestamp(),
         });
-
         showToast('Bem-vindo de volta! 💕', 'success');
+
+        // Carregar perfil e atualizar estado
+        await loadProfile(user.uid);
+        setUser(user);
       }
     } catch (error) {
       console.error('Erro no login com Google:', error);
-
       if (error.code === 'auth/popup-closed-by-user') {
         showToast('Login cancelado', 'warning');
       } else if (
@@ -456,7 +400,6 @@ export default function Auth() {
 
   const handleEmailSignup = async (e) => {
     e.preventDefault();
-
     const passwordValidation = validatePassword(password, confirmPassword);
     if (passwordValidation) {
       setPasswordError(passwordValidation);
@@ -469,7 +412,6 @@ export default function Auth() {
         email,
         password
       );
-
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         name,
         email,
@@ -483,34 +425,35 @@ export default function Auth() {
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
       });
-
       showToast('Conta criada com sucesso! 💝', 'success');
     } catch (error) {
       let errorMessage = 'Erro ao criar conta';
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.code === 'auth/email-already-in-use')
         errorMessage = 'Este email já está em uso';
-      } else if (error.code === 'auth/weak-password') {
+      else if (error.code === 'auth/weak-password')
         errorMessage = 'Senha muito fraca. Use pelo menos 6 caracteres';
-      } else if (error.code === 'auth/invalid-email') {
+      else if (error.code === 'auth/invalid-email')
         errorMessage = 'Email inválido';
-      }
       showToast(errorMessage, 'error');
     }
   };
 
   const handlePhoneSignup = async (e) => {
     e.preventDefault();
-
     const validationError = validateBrazilPhone(phoneNumber);
     if (validationError) {
       setPhoneError(validationError);
       return;
     }
 
+    const passwordValidation = validatePassword(password, confirmPassword);
+    if (passwordValidation) {
+      setPasswordError(passwordValidation);
+      return;
+    }
+
     try {
       const formattedPhone = `+55${phoneNumber}`;
-
-      // Verificar se o telefone já está cadastrado
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('phoneNumber', '==', formattedPhone));
       const querySnapshot = await getDocs(q);
@@ -520,36 +463,34 @@ export default function Auth() {
         return;
       }
 
-      // Enviar SMS de verificação
       await sendPhoneVerification(phoneNumber);
-
-      // Armazenar dados temporariamente para usar após verificação
       window.tempSignupData = {
         name,
         phoneNumber: formattedPhone,
         relationshipStart,
+        password: hashPassword(password),
       };
     } catch (error) {
       console.error('Erro ao cadastrar:', error);
-      // O erro já foi tratado em sendPhoneVerification
     }
   };
 
   const handlePhoneSignupVerification = async (e) => {
     e.preventDefault();
-
     try {
-      const { name, phoneNumber, relationshipStart } = window.tempSignupData;
-
-      // Verificar código
+      const { name, phoneNumber, relationshipStart, password } =
+        window.tempSignupData;
       const user = await verifyPhoneCode();
 
-      // Salvar dados no Firestore
+      // Criar email temporário baseado no telefone
+      const cleanPhone = phoneNumber.replace(/\D/g, '').slice(-11);
+      const tempEmail = `${cleanPhone}@phone.noo.us`;
+
       await setDoc(doc(db, 'users', user.uid), {
         name,
-        email: '',
+        email: tempEmail,
         phoneNumber,
-        passwordHash: '',
+        passwordHash: password,
         relationshipStart,
         partnerId: null,
         partnerName: null,
@@ -559,12 +500,10 @@ export default function Auth() {
         lastLogin: serverTimestamp(),
       });
 
-      // Limpar dados temporários
       delete window.tempSignupData;
       setShowVerificationStep(false);
       setVerificationCode('');
       setConfirmationResult(null);
-
       showToast('Conta criada com sucesso! 💝', 'success');
     } catch (error) {
       console.error('Erro na verificação:', error);
@@ -573,41 +512,30 @@ export default function Auth() {
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
-
     try {
-      // Configurar persistência baseado no "lembrar-me"
       await setPersistence(
         auth,
         rememberMe ? browserLocalPersistence : browserSessionPersistence
       );
-
       await signInWithEmailAndPassword(auth, email, password);
-
-      // Atualizar último login
       const user = auth.currentUser;
       if (user) {
         await updateDoc(doc(db, 'users', user.uid), {
           lastLogin: serverTimestamp(),
         });
       }
-
       showToast('Bem-vindo de volta! 💕', 'success');
     } catch (error) {
       let errorMessage = 'Email ou senha incorretos';
-
-      if (error.code === 'auth/invalid-credential') {
-        errorMessage = 'Email ou senha incorretos';
-      } else if (error.code === 'auth/too-many-requests') {
+      if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Muitas tentativas. Aguarde alguns minutos';
       }
-
       showToast(errorMessage, 'error');
     }
   };
 
   const handlePhoneLogin = async (e) => {
     e.preventDefault();
-
     try {
       const validationError = validateBrazilPhone(phoneNumber);
       if (validationError) {
@@ -615,15 +543,17 @@ export default function Auth() {
         return;
       }
 
-      // Configurar persistência
+      const passwordValidation = validatePassword(password);
+      if (passwordValidation) {
+        setPasswordError(passwordValidation);
+        return;
+      }
+
       await setPersistence(
         auth,
         rememberMe ? browserLocalPersistence : browserSessionPersistence
       );
-
       const formattedPhone = `+55${phoneNumber}`;
-
-      // Buscar usuário no Firestore
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('phoneNumber', '==', formattedPhone));
       const querySnapshot = await getDocs(q);
@@ -633,60 +563,84 @@ export default function Auth() {
         return;
       }
 
-      // Enviar SMS de verificação
-      await sendPhoneVerification(phoneNumber);
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
 
-      // Armazenar dados temporariamente
-      window.tempLoginData = {
-        phoneNumber: formattedPhone,
-        userId: querySnapshot.docs[0].id,
-      };
-    } catch (error) {
-      console.error('Erro no login:', error);
-      // O erro já foi tratado em sendPhoneVerification
-    }
-  };
+      if (!verifyPassword(password, userData.passwordHash)) {
+        showToast('Senha incorreta', 'error');
+        return;
+      }
 
-  const handlePhoneLoginVerification = async (e) => {
-    e.preventDefault();
+      // Usar o email temporário que foi criado no cadastro
+      const userEmail = userData.email;
 
-    try {
-      const { userId } = window.tempLoginData;
+      if (!userEmail) {
+        showToast(
+          'Erro ao fazer login. Entre em contato com o suporte',
+          'error'
+        );
+        return;
+      }
 
-      // Verificar código
-      await verifyPhoneCode();
+      // Fazer login usando credenciais do Firebase Auth
+      // Tentar com a senha temporária do telefone
+      const tempPassword = 'temp_password_' + phoneNumber;
 
-      // Atualizar último login
-      const user = auth.currentUser;
-      if (user) {
-        await updateDoc(doc(db, 'users', userId), {
+      try {
+        await signInWithEmailAndPassword(auth, userEmail, tempPassword);
+      } catch (loginError) {
+        // Se o usuário ainda não existe no Auth (improvável), criar
+        if (
+          loginError.code === 'auth/user-not-found' ||
+          loginError.code === 'auth/invalid-credential'
+        ) {
+          try {
+            const userCredential = await createUserWithEmailAndPassword(
+              auth,
+              userEmail,
+              tempPassword
+            );
+
+            // Se o UID for diferente, atualizar Firestore
+            if (userCredential.user.uid !== userDoc.id) {
+              await setDoc(doc(db, 'users', userCredential.user.uid), {
+                ...userData,
+                email: userEmail,
+              });
+              await deleteDoc(doc(db, 'users', userDoc.id));
+            }
+          } catch (createError) {
+            console.error('Erro ao criar usuário no Auth:', createError);
+            showToast('Erro ao fazer login. Tente novamente', 'error');
+            return;
+          }
+        } else {
+          throw loginError;
+        }
+      }
+
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
           lastLogin: serverTimestamp(),
         });
       }
 
-      // Limpar dados temporários
-      delete window.tempLoginData;
-      setShowVerificationStep(false);
-      setVerificationCode('');
-      setConfirmationResult(null);
-
       showToast('Bem-vindo de volta! 💕', 'success');
     } catch (error) {
-      console.error('Erro na verificação:', error);
+      console.error('Erro no login:', error);
+      showToast('Erro ao fazer login. Tente novamente', 'error');
     }
   };
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-
     try {
       if (resetMethod === 'email') {
         if (!resetEmail) {
           showToast('Digite seu email', 'warning');
           return;
         }
-
-        // Verificar se o email existe
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('email', '==', resetEmail));
         const querySnapshot = await getDocs(q);
@@ -705,7 +659,6 @@ export default function Auth() {
         setShowForgotPassword(false);
         setResetEmail('');
       } else {
-        // Recuperação por telefone via SMS
         const validationError = validateBrazilPhone(resetPhone);
         if (validationError) {
           showToast(validationError, 'error');
@@ -726,16 +679,14 @@ export default function Auth() {
           isOpen: true,
           title: '📱 Recuperação por Telefone',
           message:
-            'Para recuperar sua conta via telefone, você precisará fazer login novamente com o código SMS. Clique em "Voltar" e use a opção de login por telefone.',
+            'Entre em contato com o suporte através do email suporte@noo.us informando seu telefone cadastrado para recuperar sua senha.',
           type: 'info',
         });
-
         setShowForgotPassword(false);
         setResetPhone('');
       }
     } catch (error) {
       console.error('Erro na recuperação:', error);
-
       if (error.code === 'auth/user-not-found') {
         showToast('Email não encontrado', 'error');
       } else {
@@ -746,7 +697,6 @@ export default function Auth() {
 
   const handleLinkPartner = async (e) => {
     e.preventDefault();
-
     try {
       const usersRef = collection(db, 'users');
       let q;
@@ -1188,6 +1138,75 @@ export default function Auth() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Senha
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => {
+                            setPassword(e.target.value);
+                            setPasswordError('');
+                          }}
+                          className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                          placeholder="Mínimo 6 caracteres"
+                          minLength={PASSWORD_MIN_LENGTH}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Confirmar Senha
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => {
+                            setConfirmPassword(e.target.value);
+                            setPasswordError('');
+                          }}
+                          className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                          placeholder="Digite a senha novamente"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+                      {passwordError && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          {passwordError}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Início do Relacionamento
                       </label>
                       <input
@@ -1205,6 +1224,10 @@ export default function Auth() {
                     >
                       Enviar Código SMS
                     </button>
+
+                    <div className="p-3 bg-blue-50 rounded-xl text-sm text-gray-600">
+                      💡 Você receberá um SMS para confirmar seu telefone
+                    </div>
                   </form>
                 )}
 
@@ -1347,7 +1370,6 @@ export default function Auth() {
           message={modal.message}
           type={modal.type}
         />
-        <div id="recaptcha-container"></div>
         <div className="flex items-center justify-center min-h-screen p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
             <button
@@ -1358,15 +1380,8 @@ export default function Auth() {
                 setPassword('');
                 setPhoneNumber('');
                 setPhoneError('');
+                setPasswordError('');
                 setShowForgotPassword(false);
-                setShowVerificationStep(false);
-                setVerificationCode('');
-                setConfirmationResult(null);
-                if (recaptchaVerifier) {
-                  try {
-                    recaptchaVerifier.clear();
-                  } catch (e) {}
-                }
               }}
               className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2 transition"
             >
@@ -1377,13 +1392,14 @@ export default function Auth() {
             <Heart className="w-12 h-12 text-pink-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-center mb-6">Entrar</h2>
 
-            {!showForgotPassword && !showVerificationStep ? (
+            {!showForgotPassword ? (
               <>
                 <div className="flex gap-2 mb-6">
                   <button
                     onClick={() => {
                       setAuthMethod('email');
                       setPhoneError('');
+                      setPasswordError('');
                     }}
                     className={`flex-1 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
                       authMethod === 'email'
@@ -1398,6 +1414,7 @@ export default function Auth() {
                     onClick={() => {
                       setAuthMethod('phone');
                       setPhoneError('');
+                      setPasswordError('');
                     }}
                     className={`flex-1 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
                       authMethod === 'phone'
@@ -1508,6 +1525,42 @@ export default function Auth() {
                       )}
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Senha
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => {
+                            setPassword(e.target.value);
+                            setPasswordError('');
+                          }}
+                          className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                          placeholder="Sua senha"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+                      {passwordError && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          {passwordError}
+                        </p>
+                      )}
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -1526,7 +1579,7 @@ export default function Auth() {
                         onClick={() => setShowForgotPassword(true)}
                         className="text-sm text-pink-600 hover:text-pink-700 font-medium"
                       >
-                        Problemas para entrar?
+                        Esqueci a senha
                       </button>
                     </div>
 
@@ -1534,7 +1587,7 @@ export default function Auth() {
                       type="submit"
                       className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
                     >
-                      Enviar Código SMS
+                      Entrar
                     </button>
                   </form>
                 )}
@@ -1586,78 +1639,6 @@ export default function Auth() {
                   </p>
                 </div>
               </>
-            ) : showVerificationStep ? (
-              <form
-                onSubmit={handlePhoneLoginVerification}
-                className="space-y-4"
-              >
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Smartphone className="w-8 h-8 text-pink-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    Código Enviado!
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Digite o código de 6 dígitos enviado para{' '}
-                    {formatPhoneDisplay(phoneNumber)}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Código de Verificação
-                  </label>
-                  <input
-                    type="text"
-                    value={verificationCode}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      if (value.length <= 6) {
-                        setVerificationCode(value);
-                      }
-                    }}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent text-center text-2xl tracking-widest font-semibold"
-                    placeholder="000000"
-                    maxLength={6}
-                    autoFocus
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={verificationCode.length !== 6}
-                  className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Verificar e Entrar
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowVerificationStep(false);
-                    setVerificationCode('');
-                    setConfirmationResult(null);
-                    delete window.tempLoginData;
-                  }}
-                  className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition font-medium"
-                >
-                  Voltar
-                </button>
-
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handlePhoneLogin({ preventDefault: () => {} })
-                    }
-                    className="text-sm text-pink-600 hover:text-pink-700 font-medium"
-                  >
-                    Reenviar código
-                  </button>
-                </div>
-              </form>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -1727,7 +1708,7 @@ export default function Auth() {
                         required
                       />
                       <p className="mt-2 text-xs text-gray-500">
-                        Mostraremos instruções para recuperar o acesso
+                        Entre em contato com o suporte para recuperar sua senha
                       </p>
                     </div>
                   )}
@@ -1748,7 +1729,7 @@ export default function Auth() {
                       type="submit"
                       className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl hover:from-pink-600 hover:to-purple-600 transition font-medium"
                     >
-                      Recuperar
+                      {resetMethod === 'email' ? 'Enviar Email' : 'Continuar'}
                     </button>
                   </div>
                 </form>
