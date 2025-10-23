@@ -24,7 +24,7 @@ service cloud.firestore {
     // Regras para a coleção de surpresas
     match /surprises/{surpriseId} {
       // Permitir criar surpresa se estiver autenticado e for o remetente
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
                     && request.resource.data.senderId == request.auth.uid
                     && request.resource.data.senderName is string
                     && request.resource.data.recipientId is string
@@ -32,22 +32,68 @@ service cloud.firestore {
                     && request.resource.data.type is string
                     && request.resource.data.content is string
                     && request.resource.data.title is string;
-      
+
       // Permitir ler surpresas recebidas
-      allow read: if request.auth != null 
+      allow read: if request.auth != null
                   && resource.data.recipientId == request.auth.uid;
-      
+
       // Permitir ler surpresas enviadas
-      allow read: if request.auth != null 
+      allow read: if request.auth != null
                   && resource.data.senderId == request.auth.uid;
-      
+
       // Permitir deletar apenas se for o destinatário
-      allow delete: if request.auth != null 
+      allow delete: if request.auth != null
                     && resource.data.recipientId == request.auth.uid;
-      
+
       // Permitir atualizar (marcar como vista, por exemplo) se for o destinatário
-      allow update: if request.auth != null 
+      allow update: if request.auth != null
                     && resource.data.recipientId == request.auth.uid;
+    }
+
+    // Regras para a coleção de notificações/convites
+    match /notifications/{notificationId} {
+      // Permitir criar notificação se estiver autenticado
+      allow create: if request.auth != null
+                    && request.resource.data.senderId == request.auth.uid;
+
+      // Permitir ler notificações recebidas
+      allow read: if request.auth != null
+                  && resource.data.recipientId == request.auth.uid;
+
+      // Permitir ler notificações enviadas
+      allow read: if request.auth != null
+                  && resource.data.senderId == request.auth.uid;
+
+      // Permitir atualizar notificações (aceitar, rejeitar, etc.)
+      allow update: if request.auth != null
+                    && (resource.data.recipientId == request.auth.uid
+                        || resource.data.senderId == request.auth.uid);
+
+      // Permitir deletar próprias notificações
+      allow delete: if request.auth != null
+                    && (resource.data.recipientId == request.auth.uid
+                        || resource.data.senderId == request.auth.uid);
+    }
+
+    // Regras para conflitos de data
+    match /dateConflicts/{conflictId} {
+      // Permitir criar conflito
+      allow create: if request.auth != null;
+
+      // Permitir ler conflitos relacionados ao usuário
+      allow read: if request.auth != null
+                  && (resource.data.user1Id == request.auth.uid
+                      || resource.data.user2Id == request.auth.uid);
+
+      // Permitir atualizar conflitos relacionados ao usuário
+      allow update: if request.auth != null
+                    && (resource.data.user1Id == request.auth.uid
+                        || resource.data.user2Id == request.auth.uid);
+
+      // Permitir deletar conflitos resolvidos
+      allow delete: if request.auth != null
+                    && (resource.data.user1Id == request.auth.uid
+                        || resource.data.user2Id == request.auth.uid);
     }
   }
 }
