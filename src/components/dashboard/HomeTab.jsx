@@ -52,7 +52,7 @@ export default function HomeTab({
       <div className="bg-theme-secondary rounded-2xl border border-border-color shadow-sm p-4 sm:p-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative flex-shrink-0">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-primary-400 via-secondary-400 to-accent-400 flex items-center justify-center shadow-lg overflow-hidden">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary-500 flex items-center justify-center shadow-lg overflow-hidden">
               {profile.photoURL ? (
                 <img
                   src={profile.photoURL}
@@ -89,13 +89,13 @@ export default function HomeTab({
 
       {/* Trecho Musical do Dia */}
       {dailyQuote && (
-        <div className="bg-gradient-to-br from-primary-50 to-secondary-50 rounded-2xl border border-primary-200 shadow-sm p-6">
+        <div className="bg-secondary-50 rounded-2xl border border-secondary-200 shadow-sm p-6">
           <div className="flex items-start gap-4">
-            <div className="bg-gradient-to-r from-sunny-400 to-warm-500 p-3 rounded-xl shadow-lg flex-shrink-0">
+            <div className="bg-secondary-500 p-3 rounded-xl shadow-md flex-shrink-0">
               <Music className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-bold text-warm-500 mb-2">
+              <h3 className="text-sm font-bold text-secondary-600 mb-2">
                 Trecho do Dia
               </h3>
               <p className="text-base sm:text-lg italic text-theme-primary mb-2 leading-relaxed">
@@ -127,23 +127,23 @@ export default function HomeTab({
                 return icons[type] || MessageCircle;
               };
 
-              const getSurpriseGradient = (type) => {
+              const getSurpriseColor = (type) => {
                 switch (type) {
                   case 'message':
-                    return 'bg-gradient-to-br from-accent-500 to-lime-500';
+                    return 'bg-accent-500';
                   case 'photo':
-                    return 'bg-gradient-to-br from-primary-500 to-secondary-500';
+                    return 'bg-primary-500';
                   case 'music':
-                    return 'bg-gradient-to-br from-sunny-400 to-warm-500';
+                    return 'bg-secondary-500';
                   case 'date':
-                    return 'bg-gradient-to-r from-primary-500 via-secondary-500 to-warm-500';
+                    return 'bg-lime-500';
                   default:
-                    return 'bg-gradient-to-br from-primary-500 to-secondary-500';
+                    return 'bg-primary-500';
                 }
               };
 
               const Icon = getSurpriseIcon(surprise.type);
-              const gradientClass = getSurpriseGradient(surprise.type);
+              const colorClass = getSurpriseColor(surprise.type);
 
               return (
                 <div
@@ -152,7 +152,7 @@ export default function HomeTab({
                 >
                   <div className="flex items-start gap-3">
                     <div
-                      className={`${gradientClass} p-2 rounded-lg flex-shrink-0`}
+                      className={`${colorClass} p-2 rounded-lg flex-shrink-0 shadow-sm`}
                     >
                       <Icon className="w-4 h-4 text-white" />
                     </div>
@@ -190,7 +190,7 @@ export default function HomeTab({
       {!profile.partnerId ? (
         <button
           onClick={onLinkPartner}
-          className="w-full bg-gradient-to-r from-accent-500 to-lime-500 text-white py-4 px-6 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+          className="w-full bg-accent-500 hover:bg-accent-600 text-white py-4 px-6 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
         >
           <LinkIcon className="w-5 h-5" />
           <span>Vincular Parceiro</span>
@@ -198,7 +198,7 @@ export default function HomeTab({
       ) : (
         <button
           onClick={onCreateSurprise}
-          className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+          className="w-full bg-primary-500 hover:bg-primary-600 text-white py-4 px-6 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
         >
           <Plus className="w-5 h-5" />
           <span>Criar Nova Surpresa</span>

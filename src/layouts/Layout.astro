@@ -1,4 +1,5 @@
 ---
+import '../styles/global.css';
 interface Props {
   title: string;
 }
@@ -14,7 +15,7 @@ const { title } = Astro.props;
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <meta name="theme-color" content="#7c3aed" />
+    <meta name="theme-color" content="#6366f1" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -49,316 +50,56 @@ const { title } = Astro.props;
   }
 
   :root {
-    /* Fontes */
-    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-display: 'Sora', system-ui, -apple-system, sans-serif;
-
-    /* Default theme (Modo Claro) - Vibrant Pink to Coral */
-    /* Primary: Vibrant Pink (#E91E63) */
-    --color-primary-50: #fce4ec;
-    --color-primary-100: #f8bbd0;
-    --color-primary-200: #f48fb1;
-    --color-primary-300: #f06292;
-    --color-primary-400: #ec407a;
-    --color-primary-500: #e91e63;
-    --color-primary-600: #d81b60;
-    --color-primary-700: #c2185b;
-    --color-primary-800: #ad1457;
-    --color-primary-900: #880e4f;
-
-    /* Secondary: Coral (#FF6F61) */
-    --color-secondary-50: #fff3f1;
-    --color-secondary-100: #ffe0dc;
-    --color-secondary-200: #ffcdc7;
-    --color-secondary-300: #ffb9b1;
-    --color-secondary-400: #ff8f7f;
-    --color-secondary-500: #ff6f61;
-    --color-secondary-600: #ff5744;
-    --color-secondary-700: #ff3f27;
-    --color-secondary-800: #e6320f;
-    --color-secondary-900: #c22700;
-
-    /* Accent: Turquoise to Lime (#00BCD4 to #8BC34A) */
-    --color-accent-50: #e0f7fa;
-    --color-accent-100: #b2ebf2;
-    --color-accent-200: #80deea;
-    --color-accent-300: #4dd0e1;
-    --color-accent-400: #26c6da;
-    --color-accent-500: #00bcd4;
-    --color-accent-600: #00acc1;
-    --color-accent-700: #0097a7;
-    --color-accent-800: #00838f;
-    --color-accent-900: #006064;
-
-    /* Sunny Yellow to Orange */
-    --color-sunny-400: #FFC107;
-    --color-sunny-500: #FFB300;
-    --color-sunny-600: #FF9800;
-    --color-warm-500: #FF5722;
-    --color-warm-600: #F4511E;
-
-    /* Lime Green */
-    --color-lime-400: #9CCC65;
-    --color-lime-500: #8BC34A;
-    --color-lime-600: #7CB342;
-
-    /* Gradient Definitions */
-    --gradient-pink-coral: linear-gradient(to right, var(--color-primary-500), var(--color-secondary-500));
-    --gradient-turquoise-lime: linear-gradient(to right, var(--color-accent-500), var(--color-lime-500));
-    --gradient-yellow-orange: linear-gradient(to right, var(--color-sunny-400), var(--color-warm-500));
-    --gradient-pink-coral-orange: linear-gradient(to right, var(--color-primary-500), var(--color-secondary-500), var(--color-warm-500));
-
-    /* Background Gradients */
-    --gradient-bg-main: linear-gradient(135deg, #fce4ec 0%, #fff3f1 50%, #e0f7fa 100%);
-
     /* Backgrounds */
     --bg-main: #ffffff;
-    --bg-surface: #f9fafb;
     --bg-secondary: #f9fafb;
     --bg-hover: #f3f4f6;
 
-    /* Text colors */
+    /* Text */
     --text-primary: #111827;
     --text-secondary: #6b7280;
 
-    /* Other colors */
+    /* Border */
     --border-color: #e5e7eb;
-    --error-color: #ef4444;
-    --success-color: #10b981;
   }
 
   body {
-    font-family: var(--font-body);
+    font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background-color: var(--bg-main) !important;
-    background-image: none !important;
+    background-color: var(--bg-main);
     color: var(--text-primary);
-    transition: background-color 0.3s ease, color 0.3s ease;
     line-height: 1.6;
   }
 
-  /* Aplicar fonte display aos títulos */
-  h1, h2, h3 {
-    font-family: var(--font-display);
+  h1,
+  h2,
+  h3 {
+    font-family: 'Sora', system-ui, sans-serif;
     line-height: 1.2;
   }
 
-  h4, h5, h6 {
-    font-family: var(--font-body);
-    font-weight: 600;
-  }
-
-  /* Classes utilitárias para tema dinâmico */
+  /* Utilitários de tema */
   .bg-theme-main {
-    background-color: var(--bg-main) !important;
-    transition: background-color 0.3s ease;
+    background-color: var(--bg-main);
   }
-
   .bg-theme-secondary {
-    background-color: var(--bg-secondary) !important;
-    transition: background-color 0.3s ease;
+    background-color: var(--bg-secondary);
   }
-
   .text-theme-primary {
-    color: var(--text-primary) !important;
-    transition: color 0.3s ease;
+    color: var(--text-primary);
   }
-
   .text-theme-secondary {
-    color: var(--text-secondary) !important;
-    transition: color 0.3s ease;
+    color: var(--text-secondary);
   }
-
   .border-theme {
-    border-color: var(--border-color) !important;
-    transition: border-color 0.3s ease;
+    border-color: var(--border-color);
   }
 
-  /* Sobrescrever cores hardcoded do Tailwind com variáveis */
-  .bg-gray-50 { background-color: var(--bg-secondary) !important; }
-  .bg-gray-100 { background-color: var(--bg-hover) !important; }
-  .hover\:bg-gray-50:hover { background-color: var(--bg-secondary) !important; }
-  .hover\:bg-gray-100:hover { background-color: var(--bg-hover) !important; }
-  .hover\:bg-gray-200:hover { background-color: var(--bg-hover) !important; }
-
-  .text-gray-500 { color: var(--text-secondary) !important; }
-  .text-gray-600 { color: var(--text-secondary) !important; }
-  .text-gray-800 { color: var(--text-primary) !important; }
-
-  .border-gray-300 { border-color: var(--border-color) !important; }
-
-  /* Garantir que inputs e textareas respeitem o tema */
-  input, textarea, select {
-    background-color: var(--bg-secondary) !important;
-    color: var(--text-primary) !important;
-    border-color: var(--border-color) !important;
-  }
-
-  input::placeholder, textarea::placeholder {
-    color: var(--text-secondary) !important;
-    opacity: 0.6;
-  }
-
-  /* Garantir contraste em modais e overlays */
-  .fixed.inset-0 > div:not(.bg-black) {
-    background-color: var(--bg-secondary) !important;
-  }
-
-  /* Remover gradientes de fundo que interferem com o tema */
-  body.bg-gradient-to-br,
-  .bg-gradient-to-br.from-pink-50,
-  .bg-gradient-to-br.from-purple-50,
-  .bg-gradient-to-br.from-blue-50 {
-    background: var(--bg-main) !important;
-    background-image: none !important;
-  }
-
-  /* Garantir que o main container use o fundo correto */
-  main {
-    background-color: var(--bg-main) !important;
-    min-height: 100vh;
-  }
-
-  /* Animações customizadas */
-  @keyframes slide-down {
-    from {
-      opacity: 0;
-      transform: translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-
-  @keyframes wiggle {
-    0%, 100% {
-      transform: rotate(-3deg);
-    }
-    50% {
-      transform: rotate(3deg);
-    }
-  }
-
-  .animate-slide-down {
-    animation: slide-down 0.4s ease-out;
-  }
-
-  .animate-slide-up {
-    animation: slide-up 0.4s ease-out;
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.3s ease-out;
-  }
-
-  .animate-scale-in {
-    animation: scale-in 0.3s ease-out;
-  }
-
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-
-  .animate-wiggle {
-    animation: wiggle 1s ease-in-out infinite;
-  }
-
-  .animate-bounce-slow {
-    animation: bounce 3s infinite;
-  }
-
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  @keyframes bounce {
-    0%, 100% {
-      transform: translateY(0);
-      animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
-    }
-    50% {
-      transform: translateY(-10%);
-      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-    }
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: .7;
-    }
-  }
-
-  /* Melhorias no reCAPTCHA */
-  #recaptcha-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 78px;
-    margin: 0 auto;
-  }
-
-  #recaptcha-container > div {
-    transform: scale(0.95);
-    transform-origin: center;
-  }
-
-  @media (max-width: 640px) {
-    #recaptcha-container > div {
-      transform: scale(0.85);
-    }
-  }
-
-  /* Smooth scroll para mobile */
+  /* Mobile */
   @media (max-width: 768px) {
     * {
       -webkit-tap-highlight-color: transparent;
     }
-
     input,
     textarea,
     button,
@@ -367,107 +108,18 @@ const { title } = Astro.props;
     }
   }
 
-  /* Melhoria nos inputs */
-  input:focus,
-  textarea:focus,
-  select:focus {
-    outline: none;
-  }
-
-  /* Loading spinner suave */
-  @keyframes pulse-soft {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-
-  .animate-pulse {
-    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  /* Scrollbar personalizada */
+  /* Scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
-    height: 8px;
   }
-
   ::-webkit-scrollbar-track {
     background: #f1f1f1;
-    border-radius: 10px;
   }
-
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(to bottom, #ec4899, #a855f7);
+    background: #6366f1;
     border-radius: 10px;
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(to bottom, #db2777, #9333ea);
-  }
-
-  /* Melhoria nos botões touch */
-  button {
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    touch-action: manipulation;
-  }
-
-  button:active {
-    transform: scale(0.98);
-  }
-
-  /* Gradientes suaves e animados */
-  .bg-gradient-to-r,
-  .bg-gradient-to-br {
-    background-size: 200% auto;
-    transition: background-position 0.5s ease;
-  }
-
-  button.bg-gradient-to-r:hover {
-    background-position: right center;
-  }
-
-  /* Utilitários para background-size e background-position */
-  .bg-size-200 {
-    background-size: 200% auto;
-  }
-
-  .bg-pos-0 {
-    background-position: 0% center;
-  }
-
-  .bg-pos-100 {
-    background-position: 100% center;
-  }
-
-  .hover\:bg-pos-100:hover {
-    background-position: 100% center;
-  }
-
-  /* Safe area para iPhone */
-  @supports (padding: max(0px)) {
-    body {
-      padding-left: max(0px, env(safe-area-inset-left));
-      padding-right: max(0px, env(safe-area-inset-right));
-      padding-bottom: max(0px, env(safe-area-inset-bottom));
-    }
-  }
-
-  /* Transições suaves */
-  * {
-    transition-property: background-color, border-color, color, fill, stroke,
-      opacity, box-shadow, transform;
-    transition-duration: 150ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  input,
-  textarea,
-  button {
-    transition-property: all;
+    background: #4f46e5;
   }
 </style>

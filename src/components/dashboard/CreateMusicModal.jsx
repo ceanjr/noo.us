@@ -1,0 +1,108 @@
+import { useState } from 'react';
+import { X, Music } from 'lucide-react';
+
+/**
+ * CreateMusicModal - Modal específico para criar surpresa tipo música
+ *
+ * @param {Object} props
+ * @param {Function} props.onClose - Callback ao fechar modal
+ * @param {Function} props.onSubmit - Callback ao submeter (surpriseData)
+ */
+export default function CreateMusicModal({ onClose, onSubmit }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      setSubmitting(true);
+      await onSubmit({
+        type: 'music',
+        title: formData.title,
+        content: formData.content,
+      });
+      onClose();
+    } catch (error) {
+      console.error('Erro ao criar música:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-theme-secondary rounded-3xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-secondary-500 p-2 rounded-xl">
+              <Music className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+              Nova Música
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-all p-2 hover:bg-gray-100 rounded-xl"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-bold text-theme-secondary mb-2">
+              Título
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 transition-all"
+              placeholder="Ex: Nossa música"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-theme-secondary mb-2">
+              Link da Música
+            </label>
+            <textarea
+              value={formData.content}
+              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 min-h-[120px] transition-all"
+              placeholder="Cole o link do Spotify, YouTube, etc..."
+              required
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Suporte: Spotify, YouTube, SoundCloud, Apple Music
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all font-bold text-theme-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 px-6 py-3 bg-secondary-500 hover:bg-secondary-600 text-white rounded-xl transition-all font-bold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Enviando...' : 'Enviar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

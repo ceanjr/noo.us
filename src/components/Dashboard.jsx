@@ -19,8 +19,7 @@ import { usePartnerActions } from '../hooks/usePartnerActions';
 import { useNotificationActions } from '../hooks/useNotificationActions';
 import HomeTab from './dashboard/HomeTab';
 import SurprisesTab from './dashboard/SurprisesTab';
-import InboxTab from './dashboard/InboxTab';
-import { Home, Gift, Inbox, Eye, EyeOff, Sparkles, Search, Heart, User, Flame, Plus, LinkIcon, Calendar, X, Check, Users, Clock, Trash2, Music, MessageCircle, Image as ImageIcon } from 'lucide-react';
+import { Home, Gift, Eye, EyeOff, Sparkles, Search, Heart, User, Flame, Plus, LinkIcon, Calendar, X, Check, Users, Clock, Trash2, Music, MessageCircle, Image as ImageIcon } from 'lucide-react';
 
 export default function Dashboard({ profile, onLogout, userId, setModal }) {
   // UI State
@@ -120,6 +119,54 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
   const handleDateChangeResponse = async (notification, accept) => {
     await dateChangeResponse(notification, accept);
+  };
+
+  // Notification bell handlers
+  const handleNotificationClick = (notification) => {
+    // Redirecionar baseado no tipo de notificação
+    switch (notification.type) {
+      case 'link_request':
+        handleAcceptInvite(notification);
+        break;
+      case 'date_change_proposal':
+        handleRespondToProposal(notification, true);
+        break;
+      case 'new_surprise':
+        setActiveTab('surprises');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      // Implementar lógica para marcar todas como lidas
+      for (const notification of pendingNotifications) {
+        if (!notification.read) {
+          await updateDoc(doc(db, 'notifications', notification.id), {
+            read: true,
+          });
+        }
+      }
+      showToast('Todas as notificações foram marcadas como lidas', 'success');
+    } catch (error) {
+      console.error('Erro ao marcar notificações:', error);
+      showToast('Erro ao marcar notificações', 'error');
+    }
+  };
+
+  const handleClearAllNotifications = async () => {
+    try {
+      // Deletar todas as notificações
+      for (const notification of pendingNotifications) {
+        await deleteDoc(doc(db, 'notifications', notification.id));
+      }
+      showToast('Todas as notificações foram removidas', 'success');
+    } catch (error) {
+      console.error('Erro ao limpar notificações:', error);
+      showToast('Erro ao limpar notificações', 'error');
+    }
   };
 
   // Helpers
@@ -227,7 +274,6 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   const tabs = [
     { id: 'home', label: 'Início', icon: Home },
     { id: 'surprises', label: 'Surpresas', icon: Gift },
-    { id: 'inbox', label: 'Caixa', icon: Inbox, badge: pendingNotifications.length },
   ];
 
   const getSurpriseIcon = (type) => {
@@ -242,12 +288,12 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
   const getSurpriseGradient = (type) => {
     const gradients = {
-      message: 'from-accent-400 to-lime-400',
-      photo: 'from-primary-400 to-secondary-400',
-      music: 'from-sunny-400 to-warm-500',
-      date: 'from-primary-400 via-secondary-500 to-warm-500',
+      message: 'from-cyan-400 to-green-400',
+      photo: 'from-pink-400 to-orange-400',
+      music: 'from-yellow-400 to-orange-500',
+      date: 'from-pink-400 via-orange-400 to-red-500',
     };
-    return gradients[type] || 'from-primary-400 to-secondary-400';
+    return gradients[type] || 'from-pink-400 to-orange-400';
   };
 
   return (
@@ -264,8 +310,10 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
       {/* Header */}
       <DashboardHeader
-        pendingNotificationsCount={pendingNotifications.length}
-        onNotificationsClick={() => setActiveTab('inbox')}
+        notifications={pendingNotifications}
+        onNotificationClick={handleNotificationClick}
+        onMarkAsRead={handleMarkAllAsRead}
+        onClearAll={handleClearAllNotifications}
         onSettingsClick={() => setShowSettings(true)}
         onLogout={onLogout}
       />
@@ -306,16 +354,6 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
           />
         )}
 
-        {/* INBOX TAB */}
-        {activeTab === 'inbox' && (
-          <InboxTab
-            notifications={pendingNotifications}
-            onAcceptInvite={handleAcceptInvite}
-            onRejectInvite={handleRejectInvite}
-            onRespondToProposal={handleRespondToProposal}
-            onDateChangeResponse={handleDateChangeResponse}
-          />
-        )}
       </div>
 
       {/* Bottom Navigation - Esconde quando settings está aberto */}
@@ -339,6 +377,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         <CreateSurpriseModal
           onClose={() => setShowNewSurprise(false)}
           onSubmit={handleCreateSurprise}
+          userId={userId}
         />
       )}
     </div>

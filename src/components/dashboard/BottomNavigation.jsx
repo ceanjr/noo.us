@@ -6,7 +6,7 @@
  * @param {string} props.activeTab - ID da tab ativa
  * @param {Function} props.onTabChange - Callback ao mudar de tab
  */
-export default function BottomNavigation({ tabs, activeTab, onTabChange}) {
+export default function BottomNavigation({ tabs, activeTab, onTabChange }) {
   return (
     <>
       {/* Bottom Navigation - Mobile Only */}
@@ -21,8 +21,8 @@ export default function BottomNavigation({ tabs, activeTab, onTabChange}) {
                 onClick={() => onTabChange(tab.id)}
                 className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all relative ${
                   isActive
-                    ? 'text-primary-600'
-                    : 'text-gray-400 hover:text-gray-600'
+                    ? 'text-primary-600 bg-primary-500/10'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <Icon
@@ -60,7 +60,7 @@ export default function BottomNavigation({ tabs, activeTab, onTabChange}) {
                 onClick={() => onTabChange(tab.id)}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all relative ${
                   isActive
-                    ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow-lg'
+                    ? 'bg-primary-500 hover:bg-primary-600 text-white shadow-lg'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >

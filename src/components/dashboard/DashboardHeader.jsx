@@ -1,17 +1,22 @@
-import { Bell, Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 /**
  * DashboardHeader - Header fixo no topo do Dashboard
  *
  * @param {Object} props
- * @param {number} props.pendingNotificationsCount - Número de notificações pendentes
- * @param {Function} props.onNotificationsClick - Callback ao clicar no sino de notificações
+ * @param {Array} props.notifications - Lista de notificações
+ * @param {Function} props.onNotificationClick - Callback ao clicar em notificação
+ * @param {Function} props.onMarkAsRead - Callback ao marcar como lida
+ * @param {Function} props.onClearAll - Callback ao limpar todas
  * @param {Function} props.onSettingsClick - Callback ao clicar em configurações
  * @param {Function} props.onLogout - Callback ao fazer logout
  */
 export default function DashboardHeader({
-  pendingNotificationsCount,
-  onNotificationsClick,
+  notifications = [],
+  onNotificationClick,
+  onMarkAsRead,
+  onClearAll,
   onSettingsClick,
   onLogout,
 }) {
@@ -35,17 +40,12 @@ export default function DashboardHeader({
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            {pendingNotificationsCount > 0 && (
-              <button
-                onClick={onNotificationsClick}
-                className="relative p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              >
-                <Bell className="w-5 h-5 text-primary-500" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                  {pendingNotificationsCount}
-                </span>
-              </button>
-            )}
+            <NotificationBell
+              notifications={notifications}
+              onNotificationClick={onNotificationClick}
+              onMarkAsRead={onMarkAsRead}
+              onClearAll={onClearAll}
+            />
 
             <button
               onClick={onSettingsClick}

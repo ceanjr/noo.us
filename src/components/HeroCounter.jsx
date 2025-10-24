@@ -41,7 +41,7 @@ export default function HeroCounter({ daysTogether, musicCount, photoCount, stre
       label: 'Dias Juntos',
       value: animatedDays,
       icon: Heart,
-      gradient: 'from-primary-500 to-secondary-600',
+      color: 'text-primary-600',
       iconBg: 'bg-primary-500/10',
       iconColor: 'text-primary-600',
     },
@@ -49,15 +49,15 @@ export default function HeroCounter({ daysTogether, musicCount, photoCount, stre
       label: 'Músicas',
       value: animatedMusic,
       icon: Music,
-      gradient: 'from-sunny-400 to-warm-500',
-      iconBg: 'bg-sunny-400/10',
-      iconColor: 'text-warm-500',
+      color: 'text-secondary-600',
+      iconBg: 'bg-secondary-500/10',
+      iconColor: 'text-secondary-600',
     },
     {
       label: 'Fotos',
       value: animatedPhotos,
       icon: Image,
-      gradient: 'from-accent-400 to-lime-500',
+      color: 'text-accent-600',
       iconBg: 'bg-accent-500/10',
       iconColor: 'text-accent-600',
     },
@@ -65,7 +65,7 @@ export default function HeroCounter({ daysTogether, musicCount, photoCount, stre
       label: 'Streak Atual',
       value: animatedStreak,
       icon: Flame,
-      gradient: 'from-warm-500 to-secondary-500',
+      color: 'text-warm-600',
       iconBg: 'bg-warm-500/10',
       iconColor: 'text-warm-600',
     },
@@ -85,7 +85,7 @@ export default function HeroCounter({ daysTogether, musicCount, photoCount, stre
               <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${stat.iconBg} mb-3`}>
                 <Icon className={`w-6 h-6 ${stat.iconColor}`} />
               </div>
-              <div className={`text-3xl lg:text-4xl font-display font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent mb-1`}>
+              <div className={`text-3xl lg:text-4xl font-display font-bold ${stat.color} mb-1`}>
                 {stat.value.toLocaleString()}
               </div>
               <div className="text-xs text-theme-secondary font-medium">

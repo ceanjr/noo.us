@@ -25,16 +25,16 @@ export default function MomentCard({ moment, onReact, isPrivateMode, size = 'med
     }
   };
 
-  const getGradient = () => {
+  const getColor = () => {
     switch (moment.type) {
       case 'music':
-        return 'from-sunny-400 to-warm-500';
+        return 'bg-secondary-500';
       case 'photo':
-        return 'from-primary-500 to-secondary-500';
+        return 'bg-primary-500';
       case 'message':
-        return 'from-accent-500 to-lime-500';
+        return 'bg-accent-500';
       default:
-        return 'from-primary-500 to-secondary-500';
+        return 'bg-primary-500';
     }
   };
 
@@ -52,7 +52,7 @@ export default function MomentCard({ moment, onReact, isPrivateMode, size = 'med
           ${isBlurred ? 'blur-md' : ''}`}
       >
         {/* Header */}
-        <div className={`p-3 bg-gradient-to-r ${getGradient()}`}>
+        <div className={`p-3 ${getColor()}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">

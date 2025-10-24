@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { db, auth } from '../lib/firebase';
 import {
   updateDoc,
@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import CryptoJS from 'crypto-js';
 import { useTheme } from '../contexts/ThemeContext';
+import { uploadProfilePhoto, validateImageFile } from '../lib/storage';
 
 const SALT_KEY = 'noo_us_secure_v1';
 
@@ -46,6 +47,8 @@ export default function ProfileSettings({
   // Profile data
   const [name, setName] = useState(profile.name || '');
   const [photoURL, setPhotoURL] = useState(profile.photoURL || '');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Password data
   const [currentPassword, setCurrentPassword] = useState('');
@@ -65,6 +68,46 @@ export default function ProfileSettings({
     return CryptoJS.SHA256(password + SALT_KEY).toString();
   };
 
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar arquivo
+    const validation = validateImageFile(file, 3);
+    if (!validation.valid) {
+      showToast(validation.error, 'error');
+      return;
+    }
+
+    try {
+      setUploadingPhoto(true);
+      showToast('Enviando foto de perfil...', 'info');
+
+      // Upload da imagem
+      const newPhotoURL = await uploadProfilePhoto(file, userId);
+
+      // Atualizar no Firestore
+      await updateDoc(doc(db, 'users', userId), {
+        photoURL: newPhotoURL,
+      });
+
+      setPhotoURL(newPhotoURL);
+      showToast('Foto de perfil atualizada! ✨', 'success');
+    } catch (error) {
+      console.error('Erro ao atualizar foto:', error);
+      showToast('Erro ao atualizar foto de perfil', 'error');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -72,7 +115,6 @@ export default function ProfileSettings({
     try {
       await updateDoc(doc(db, 'users', userId), {
         name,
-        photoURL,
       });
 
       showToast('Perfil atualizado com sucesso! ✨', 'success');
@@ -244,9 +286,23 @@ export default function ProfileSettings({
           {/* Profile Section */}
           {activeSection === 'profile' && (
             <form onSubmit={handleUpdateProfile} className="space-y-6">
+              {/* Input escondido para upload de foto */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
               <div className="text-center">
                 <div className="relative inline-block">
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary-400 to-secondary-400 flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-4 mx-auto overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={handlePhotoClick}
+                    disabled={uploadingPhoto}
+                    className="w-32 h-32 rounded-full bg-primary-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-4 mx-auto overflow-hidden hover:opacity-90 transition-opacity relative group disabled:cursor-not-allowed"
+                  >
                     {photoURL ? (
                       <img
                         src={photoURL}
@@ -256,27 +312,24 @@ export default function ProfileSettings({
                     ) : (
                       <User className="w-16 h-16" />
                     )}
-                  </div>
-                  <div className="absolute bottom-4 right-0 bg-theme-secondary p-2 rounded-full shadow-lg">
-                    <Camera className="w-5 h-5 text-gray-600" />
-                  </div>
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-bold text-theme-secondary mb-2">
-                  URL da Foto de Perfil
-                </label>
-                <input
-                  type="url"
-                  value={photoURL}
-                  onChange={(e) => setPhotoURL(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
-                  placeholder="https://exemplo.com/foto.jpg"
-                />
-                <p className="mt-2 text-xs text-gray-500">
-                  Cole o link de uma imagem da internet (ex: Imgur, Google
-                  Photos)
+                    {/* Overlay ao hover */}
+                    {!uploadingPhoto && (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Camera className="w-8 h-8 text-white" />
+                      </div>
+                    )}
+
+                    {/* Loading spinner */}
+                    {uploadingPhoto && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                      </div>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Clique na foto para alterar
                 </p>
               </div>
 
