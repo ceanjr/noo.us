@@ -1,4 +1,5 @@
 ---
+import '../styles/global.css';
 interface Props {
   title: string;
 }
@@ -14,7 +15,7 @@ const { title } = Astro.props;
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <meta name="theme-color" content="#ec4899" />
+    <meta name="theme-color" content="#6366f1" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -25,11 +26,18 @@ const { title } = Astro.props;
       content="Um espaço especial para casais deixarem surpresas um para o outro"
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Google Fonts: Inter e Sora -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
     <title>{title}</title>
   </head>
-  <body
-    class="bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 min-h-screen"
-  >
+  <body class="min-h-screen">
     <slot />
   </body>
 </html>
@@ -41,90 +49,57 @@ const { title } = Astro.props;
     box-sizing: border-box;
   }
 
+  :root {
+    /* Backgrounds */
+    --bg-main: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-hover: #f3f4f6;
+
+    /* Text */
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+
+    /* Border */
+    --border-color: #e5e7eb;
+  }
+
   body {
-    font-family:
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      'Segoe UI',
-      Roboto,
-      'Helvetica Neue',
-      Arial,
-      sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    line-height: 1.6;
   }
 
-  /* Animações customizadas */
-  @keyframes slide-down {
-    from {
-      opacity: 0;
-      transform: translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  h1,
+  h2,
+  h3 {
+    font-family: 'Sora', system-ui, sans-serif;
+    line-height: 1.2;
   }
 
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  /* Utilitários de tema */
+  .bg-theme-main {
+    background-color: var(--bg-main);
+  }
+  .bg-theme-secondary {
+    background-color: var(--bg-secondary);
+  }
+  .text-theme-primary {
+    color: var(--text-primary);
+  }
+  .text-theme-secondary {
+    color: var(--text-secondary);
+  }
+  .border-theme {
+    border-color: var(--border-color);
   }
 
-  @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .animate-slide-down {
-    animation: slide-down 0.3s ease-out;
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.2s ease-out;
-  }
-
-  .animate-scale-in {
-    animation: scale-in 0.3s ease-out;
-  }
-
-  /* Melhorias no reCAPTCHA */
-  #recaptcha-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 78px;
-    margin: 0 auto;
-  }
-
-  #recaptcha-container > div {
-    transform: scale(0.95);
-    transform-origin: center;
-  }
-
-  @media (max-width: 640px) {
-    #recaptcha-container > div {
-      transform: scale(0.85);
-    }
-  }
-
-  /* Smooth scroll para mobile */
+  /* Mobile */
   @media (max-width: 768px) {
     * {
       -webkit-tap-highlight-color: transparent;
     }
-
     input,
     textarea,
     button,
@@ -133,90 +108,18 @@ const { title } = Astro.props;
     }
   }
 
-  /* Melhoria nos inputs */
-  input:focus,
-  textarea:focus,
-  select:focus {
-    outline: none;
-  }
-
-  /* Loading spinner suave */
-  @keyframes pulse-soft {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-
-  .animate-pulse {
-    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  /* Scrollbar personalizada */
+  /* Scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
-    height: 8px;
   }
-
   ::-webkit-scrollbar-track {
     background: #f1f1f1;
-    border-radius: 10px;
   }
-
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(to bottom, #ec4899, #a855f7);
+    background: #6366f1;
     border-radius: 10px;
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(to bottom, #db2777, #9333ea);
-  }
-
-  /* Melhoria nos botões touch */
-  button {
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    touch-action: manipulation;
-  }
-
-  button:active {
-    transform: scale(0.98);
-  }
-
-  /* Gradientes suaves */
-  .bg-gradient-to-r,
-  .bg-gradient-to-br {
-    background-size: 200% auto;
-    transition: background-position 0.5s ease;
-  }
-
-  button.bg-gradient-to-r:hover {
-    background-position: right center;
-  }
-
-  /* Safe area para iPhone */
-  @supports (padding: max(0px)) {
-    body {
-      padding-left: max(0px, env(safe-area-inset-left));
-      padding-right: max(0px, env(safe-area-inset-right));
-      padding-bottom: max(0px, env(safe-area-inset-bottom));
-    }
-  }
-
-  /* Transições suaves */
-  * {
-    transition-property: background-color, border-color, color, fill, stroke,
-      opacity, box-shadow, transform;
-    transition-duration: 150ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  input,
-  textarea,
-  button {
-    transition-property: all;
+    background: #4f46e5;
   }
 </style>
