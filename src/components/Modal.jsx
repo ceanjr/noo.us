@@ -26,9 +26,17 @@ export default function Modal({
     }
   };
 
-  const handleConfirm = () => {
-    if (onConfirm) onConfirm();
-    onClose();
+  const handleConfirm = async () => {
+    try {
+      if (onConfirm) {
+        const result = onConfirm();
+        if (result && typeof result.then === 'function') {
+          await result;
+        }
+      }
+    } finally {
+      onClose();
+    }
   };
 
   return (

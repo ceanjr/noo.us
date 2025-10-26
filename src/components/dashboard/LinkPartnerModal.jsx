@@ -6,18 +6,16 @@ import { X, Send, Link as LinkIcon, Sparkles } from 'lucide-react';
  *
  * @param {Object} props
  * @param {Function} props.onClose - Callback ao fechar modal
- * @param {Function} props.onSubmit - Callback ao enviar (identifier, startDate)
+ * @param {Function} props.onSubmit - Callback ao enviar (identifier)
  */
 export default function LinkPartnerModal({ onClose, onSubmit }) {
   const [partnerIdentifier, setPartnerIdentifier] = useState('');
-  const [relationshipStartDate, setRelationshipStartDate] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = await onSubmit(partnerIdentifier, relationshipStartDate);
+    const success = await onSubmit(partnerIdentifier);
     if (success) {
       setPartnerIdentifier('');
-      setRelationshipStartDate('');
       onClose();
     }
   };
@@ -57,26 +55,11 @@ export default function LinkPartnerModal({ onClose, onSubmit }) {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-theme-secondary mb-2">
-              Quando começou o namoro?
-            </label>
-            <input
-              type="date"
-              value={relationshipStartDate}
-              onChange={(e) => setRelationshipStartDate(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-              required
-            />
-          </div>
-
           <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
             <div className="flex items-start gap-2">
               <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-theme-secondary">
-                Seu parceiro receberá um convite e também informará a data
-                que lembra. Se as datas forem diferentes, vocês poderão
-                resolver juntos!
+                Seu parceiro receberá um convite para se conectar a você.
               </p>
             </div>
           </div>

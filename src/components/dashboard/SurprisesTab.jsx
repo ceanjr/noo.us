@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Sparkles, Search, Gift } from 'lucide-react';
+﻿import { Eye, EyeOff, Sparkles, Search, Gift } from 'lucide-react';
 import HeroCounter from '../HeroCounter';
 import MomentOfDay from '../MomentOfDay';
 import TimelineSlider from '../TimelineSlider';
@@ -11,23 +11,22 @@ import CreateMomentFAB from '../CreateMomentFAB';
  *
  * @param {Object} props
  * @param {number} props.daysTogether - Dias de relacionamento
- * @param {number} props.musicCount - Total de músicas
+ * @param {number} props.musicCount - Total de mÃºsicas
  * @param {number} props.photoCount - Total de fotos
  * @param {number} props.streak - Streak de atividade
  * @param {Object} props.momentOfDay - Momento especial do dia
  * @param {Array} props.filteredMoments - Momentos filtrados
  * @param {string} props.viewMode - 'constellation' ou 'immersive'
  * @param {boolean} props.isPrivateMode - Modo privado ativo
- * @param {boolean} props.hasPartner - Se usuário tem parceiro vinculado
+ * @param {boolean} props.hasPartner - Se usuÃ¡rio tem parceiro vinculado
  * @param {string} props.partnerName - Nome do parceiro
- * @param {Function} props.onPeriodChange - Callback mudança de período
- * @param {Function} props.onViewModeChange - Callback mudança de modo
+ * @param {Function} props.onPeriodChange - Callback mudanÃ§a de perÃ­odo
+ * @param {Function} props.onViewModeChange - Callback mudanÃ§a de modo
  * @param {Function} props.onPrivateModeToggle - Callback toggle privado
- * @param {Function} props.onReact - Callback reação a momento
+ * @param {Function} props.onReact - Callback reaÃ§Ã£o a momento
  * @param {Function} props.onCreateMoment - Callback criar momento
  */
 export default function SurprisesTab({
-  daysTogether,
   musicCount,
   photoCount,
   streak,
@@ -42,12 +41,13 @@ export default function SurprisesTab({
   onPrivateModeToggle,
   onReact,
   onCreateMoment,
+  revealedSurprises,
+  onRevealSurprise,
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       {/* Hero Counter */}
       <HeroCounter
-        daysTogether={daysTogether}
         musicCount={musicCount}
         photoCount={photoCount}
         streak={streak}
@@ -90,7 +90,7 @@ export default function SurprisesTab({
                   ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md'
                   : 'text-theme-secondary hover:bg-primary-500/10'
               }`}
-              title="Modo Constelação"
+              title="Modo ConstelaÃ§Ã£o"
             >
               <Sparkles className="w-4 h-4" />
             </button>
@@ -114,12 +114,12 @@ export default function SurprisesTab({
         <div className="bg-theme-secondary rounded-2xl shadow-lg p-8 text-center">
           <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-gray-400 mb-2">
-            Nenhum momento neste período...
+            Nenhum momento neste perÃ­odo...
           </h3>
           <p className="text-gray-500 text-sm">
             {hasPartner
-              ? `Experimente outro período ou crie novos momentos com ${partnerName}!`
-              : 'Vincule sua conta para começar a receber momentos especiais!'}
+              ? `Experimente outro perÃ­odo ou crie novos momentos com ${partnerName}!`
+              : 'Vincule sua conta para comeÃ§ar a receber momentos especiais!'}
           </p>
         </div>
       ) : viewMode === 'constellation' ? (
@@ -127,6 +127,8 @@ export default function SurprisesTab({
           moments={filteredMoments}
           onReact={onReact}
           isPrivateMode={isPrivateMode}
+          revealedSurprises={revealedSurprises}
+          onRevealSurprise={onRevealSurprise}
         />
       ) : (
         <ImmersiveView
@@ -134,6 +136,8 @@ export default function SurprisesTab({
           onReact={onReact}
           isPrivateMode={isPrivateMode}
           onClose={() => onViewModeChange('constellation')}
+          revealedSurprises={revealedSurprises}
+          onRevealSurprise={onRevealSurprise}
         />
       )}
 
@@ -142,3 +146,4 @@ export default function SurprisesTab({
     </div>
   );
 }
+

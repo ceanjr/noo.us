@@ -15,6 +15,7 @@ export default function NotificationBell({
   onNotificationClick,
   onMarkAsRead,
   onClearAll,
+  onMarkOne,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -60,12 +61,65 @@ export default function NotificationBell({
 
   const getNotificationIcon = (type) => {
     switch (type) {
+      case 'link_invite':
+        return <Heart className="w-6 h-6 text-primary-500" />;
       case 'link_accepted':
-        return <Heart className="w-5 h-5 text-primary-500" />;
+        return <Heart className="w-6 h-6 text-primary-500" />;
       case 'new_surprise':
-        return <Gift className="w-5 h-5 text-secondary-500" />;
+        return <Gift className="w-6 h-6 text-secondary-500" />;
       default:
-        return <Bell className="w-5 h-5 text-accent-500" />;
+        return <Bell className="w-6 h-6 text-accent-500" />;
+    }
+  };
+
+  const getNotificationAvatar = (n) => {
+    const photo = n.senderPhotoURL || n.senderPhoto || n.photoURL || '';
+    const bg = n.senderAvatarBg || n.avatarBg || '';
+    const isIcon = photo && photo.includes('/images/icons/');
+    if (photo) {
+      return (
+        <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-white" style={{ backgroundColor: bg || undefined }}>
+          <img src={photo} alt={n.senderName || 'Remetente'} className={`w-full h-full ${isIcon ? 'object-contain p-1' : 'object-cover'}`} />
+        </div>
+      );
+    }
+    return (
+      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center ring-2 ring-white">
+        {getNotificationIcon(n.type)}
+      </div>
+    );
+  };
+
+  const getTitle = (n) => {
+    if (n.title) return n.title;
+    switch (n.type) {
+      case 'link_invite':
+        return `Convite de ${n.senderName || 'alguém'}`;
+      case 'date_proposal':
+        return `Proposta de ${n.senderName || 'parceiro'}`;
+      case 'date_change_request':
+        return `Alteração de ${n.senderName || 'parceiro'}`;
+      case 'new_surprise':
+        return `Nova surpresa`;
+      default:
+        return 'Notificação';
+    }
+  };
+
+  const getMessage = (n) => {
+    if (n.message) return n.message;
+    switch (n.type) {
+      case 'link_invite':
+        return `${n.senderName || 'Alguém'} quer vincular as contas`;
+      case 'date_proposal':
+      case 'date_change_request':
+        return n.proposedDate
+          ? `Data sugerida: ${new Date(n.proposedDate).toLocaleDateString('pt-BR')}`
+          : 'Há uma sugestão de data';
+      case 'new_surprise':
+        return 'Você recebeu uma nova surpresa';
+      default:
+        return '';
     }
   };
 
@@ -101,33 +155,48 @@ export default function NotificationBell({
       ) : (
         <>
           {notifications.map((notification) => (
-            <button
+            <div
               key={notification.id}
+              role="button"
+              tabIndex={0}
               onClick={() => handleNotificationClick(notification)}
-              className={`w-full text-left p-3 rounded-lg transition-all hover:bg-gray-50 ${
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNotificationClick(notification); } }}
+              className={`w-full text-left p-3 rounded-lg transition-all hover:bg-gray-50 cursor-pointer ${
                 !notification.read ? 'bg-primary-50' : ''
               }`}
             >
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-1">
-                  {getNotificationIcon(notification.type)}
+                <div className="flex-shrink-0 mt-0.5">
+                  {getNotificationAvatar(notification)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-theme-primary">
-                    {notification.title}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-theme-primary">
+                      {getTitle(notification)}
+                    </p>
+                    {!notification.read && (
+                      <span className="text-[10px] uppercase tracking-wide bg-primary-100 text-primary-600 px-2 py-0.5 rounded-full">Novo</span>
+                    )}
+                  </div>
                   <p className="text-xs text-theme-secondary mt-1 line-clamp-2">
-                    {notification.message}
+                    {getMessage(notification)}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
                     {formatTime(notification.createdAt)}
                   </p>
                 </div>
                 {!notification.read && (
-                  <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-2"></div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onMarkOne?.(notification); }}
+                    className="ml-2 px-2 py-1 text-[11px] text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-md"
+                    title="Marcar como lida"
+                  >
+                    Lida
+                  </button>
                 )}
               </div>
-            </button>
+            </div>
           ))}
         </>
       )}

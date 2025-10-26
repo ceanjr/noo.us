@@ -116,3 +116,29 @@ export const emailExists = async (email) => {
   const user = await findUserByEmail(email);
   return user !== null;
 };
+
+// ===== Avatar defaults for existing users =====
+const AVATAR_COLORS = ['#fcc639','#f7b83b','#f29e48','#ec6d77','#e86485','#db5d98'];
+const randomColor = () => AVATAR_COLORS[Math.floor(Math.random()*AVATAR_COLORS.length)];
+const genderIcon = (gender) => {
+  const g = (gender || '').toLowerCase();
+  if (g.includes('masc')) return '/images/icons/male.png';
+  if (g.includes('fem')) return '/images/icons/female.png';
+  return '/images/icons/neutral.png';
+};
+
+/**
+ * Ensures legacy profiles have avatarBg and icon photoURL.
+ * Updates Firestore if needed and returns the merged profile.
+ */
+export const ensureAvatarDefaults = async (userId, profile) => {
+  if (!profile) return null;
+  const updates = {};
+  if (!profile.avatarBg) updates.avatarBg = randomColor();
+  if (!profile.photoURL) updates.photoURL = genderIcon(profile.gender);
+  if (Object.keys(updates).length > 0) {
+    await updateDoc(doc(db, 'users', userId), updates);
+    return { ...profile, ...updates };
+  }
+  return profile;
+};

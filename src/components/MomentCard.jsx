@@ -1,24 +1,38 @@
-import { Music, Image as ImageIcon, MessageCircle, ExternalLink, Eye, EyeOff } from 'lucide-react';
-import { useState } from 'react';
-import ReactionBar from './ReactionBar';
+﻿import {
+  Music,
+  Image as ImageIcon,
+  MessageCircle,
+  ExternalLink,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import { useState } from "react";
+import ReactionBar from "./ReactionBar";
 
-export default function MomentCard({ moment, onReact, isPrivateMode, size = 'medium' }) {
+export default function MomentCard({
+  moment,
+  onReact,
+  isPrivateMode,
+  size = "medium",
+  isRevealed,
+  onReveal,
+}) {
   const [showReactions, setShowReactions] = useState(false);
   const [isBlurred, setIsBlurred] = useState(moment.isPrivate && isPrivateMode);
 
   const sizeClasses = {
-    small: 'w-32 h-32',
-    medium: 'w-40 h-40',
-    large: 'w-48 h-48',
+    small: "w-32 h-32",
+    medium: "w-40 h-40",
+    large: "w-48 h-48",
   };
 
   const getIcon = () => {
     switch (moment.type) {
-      case 'music':
+      case "music":
         return Music;
-      case 'photo':
+      case "photo":
         return ImageIcon;
-      case 'message':
+      case "message":
         return MessageCircle;
       default:
         return MessageCircle;
@@ -27,18 +41,53 @@ export default function MomentCard({ moment, onReact, isPrivateMode, size = 'med
 
   const getColor = () => {
     switch (moment.type) {
-      case 'music':
-        return 'bg-secondary-500';
-      case 'photo':
-        return 'bg-primary-500';
-      case 'message':
-        return 'bg-accent-500';
+      case "music":
+        return "bg-secondary-500";
+      case "photo":
+        return "bg-primary-500";
+      case "message":
+        return "bg-accent-500";
       default:
-        return 'bg-primary-500';
+        return "bg-primary-500";
+    }
+  };
+
+  const getTypeName = (type) => {
+    switch (type) {
+      case "music":
+        return "MÃºsica";
+      case "photo":
+        return "Foto";
+      case "message":
+        return "Mensagem";
+      default:
+        return "Surpresa";
     }
   };
 
   const Icon = getIcon();
+
+  if (!isRevealed) {
+    return (
+      <div className={`${sizeClasses[size]} group relative`} onClick={onReveal}>
+        <div
+          className={`w-full h-full bg-theme-secondary rounded-xl border border-border-color shadow-sm
+            transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer overflow-hidden
+            flex flex-col items-center justify-center p-6`}
+        >
+          <div className={`p-3 rounded-full mb-2 ${getColor()}`}>
+            <Icon className="w-5 h-5 text-white" />
+          </div>
+          <p className="text-sm font-bold text-theme-primary text-center">
+            {getTypeName(moment.type)}
+          </p>
+          <p className="text-xs text-theme-secondary text-center mt-1">
+            Clique para revelar
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -49,7 +98,7 @@ export default function MomentCard({ moment, onReact, isPrivateMode, size = 'med
       <div
         className={`w-full h-full bg-theme-secondary rounded-xl border border-border-color shadow-sm
           transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer overflow-hidden
-          ${isBlurred ? 'blur-md' : ''}`}
+          ${isBlurred ? "blur-md" : ""}`}
       >
         {/* Header */}
         <div className={`p-3 ${getColor()}`}>
@@ -68,12 +117,14 @@ export default function MomentCard({ moment, onReact, isPrivateMode, size = 'med
                 </div>
               )}
             </div>
-            <span className="text-xs text-white/80 font-medium">{moment.time}</span>
+            <span className="text-xs text-white/80 font-medium">
+              {moment.time}
+            </span>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-3 flex flex-col h-[calc(100%-3.5rem)]">
+        <div className="p-6 flex flex-col h-[calc(100%-3.5rem)]">
           <h3 className="font-semibold text-sm text-theme-primary line-clamp-2 mb-1">
             {moment.title}
           </h3>
@@ -84,16 +135,20 @@ export default function MomentCard({ moment, onReact, isPrivateMode, size = 'med
           {/* Author */}
           <div className="mt-auto">
             <div className="flex items-center gap-1.5">
-              <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${moment.authorColor} flex items-center justify-center text-white text-xs font-bold`}>
+              <div
+                className={`w-6 h-6 rounded-full bg-gradient-to-r ${moment.authorColor} flex items-center justify-center text-white text-xs font-bold`}
+              >
                 {moment.author[0]}
               </div>
-              <span className="text-xs font-medium text-theme-secondary">{moment.author}</span>
+              <span className="text-xs font-medium text-theme-secondary">
+                {moment.author}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Music specific - link externo */}
-        {moment.type === 'music' && moment.content && (
+        {moment.type === "music" && moment.content && (
           <a
             href={moment.content}
             target="_blank"

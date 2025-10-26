@@ -1,63 +1,39 @@
-﻿rules_version = '2';
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Regras para a coleÃ§Ã£o de usuÃ¡rios
+    // Regras para a coleção de usuários
     match /users/{userId} {
-      // Permitir criar conta (tanto autenticado quanto nÃ£o autenticado para suportar cadastro)
+      // Permitir criar conta (tanto autenticado quanto não autenticado para suportar cadastro)
       allow create: if (request.auth != null && request.auth.uid == userId)
                     || request.auth == null;
 
-      // Permitir ler o prÃ³prio perfil
+      // Permitir ler o próprio perfil
       allow read: if request.auth != null && request.auth.uid == userId;
 
       // Permitir ler perfil do parceiro vinculado
       allow read: if request.auth != null
                   && resource.data.partnerId == request.auth.uid;
 
-      // Permitir buscar usuÃ¡rios por email ou telefone (necessÃ¡rio para login e convites)
-      // Permitir leitura pÃºblica para suportar login
+      // Permitir buscar usuários por email ou telefone (necessário para login e convites)
+      // Permitir leitura pública para suportar login
       allow read: if true;
 
-      // Permitir atualizar o prÃ³prio perfil
+      // Permitir atualizar o próprio perfil
       allow update: if request.auth != null && request.auth.uid == userId;
 
-      // Permitir atualizar perfil de outro usuÃ¡rio APENAS para vinculaÃ§Ã£o
-      // quando estÃ¡ definindo partnerId para si mesmo (aceitar convite)
+      // Permitir atualizar perfil de outro usuário APENAS para vinculação
+      // quando está definindo partnerId para si mesmo (aceitar convite)
       allow update: if request.auth != null
                     && request.resource.data.partnerId == request.auth.uid
-                    && request.resource.data.partnerName is string;
+                    && request.resource.data.partnerName is string
+                    && request.resource.data.relationshipStart is string;
 
-      // Permitir desvincular perfil do parceiro quando o documento do parceiro
-      // atualmente aponta para o usuÃ¡rio autenticado
-      allow update: if request.auth != null
-                    && resource.data.partnerId == request.auth.uid
-                    && request.resource.data.partnerId == null
-                    && request.resource.data.partnerName == null;
-
-      // Permitir deletar apenas se autenticado e for admin ou o prÃ³prio usuÃ¡rio
+      // Permitir deletar apenas se autenticado e for admin ou o próprio usuário
       allow delete: if request.auth != null && request.auth.uid == userId;
-
-      // SubcoleÃ§Ã£o de vÃ­nculos (suporta mÃºltiplos vÃ­nculos por usuÃ¡rio)
-      match /links/{linkId} {
-        // Ler links do prÃ³prio usuÃ¡rio ou links que referenciem o usuÃ¡rio autenticado
-        allow read: if request.auth != null && (request.auth.uid == userId || resource.data.partnerId == request.auth.uid);
-
-        // Criar link no prÃ³prio doc OU criar espelho no doc do parceiro
-        allow create: if request.auth != null && (
-                        request.auth.uid == userId ||
-                        request.resource.data.partnerId == request.auth.uid
-                      );
-
-        // Atualizar links pelo dono do documento OU pelo parceiro referenciado
-        allow update: if request.auth != null && (request.auth.uid == userId || resource.data.partnerId == request.auth.uid);
-
-        // Permitir deletar o link tanto pelo dono do doc quanto pelo parceiro referido
-        allow delete: if request.auth != null && (request.auth.uid == userId || resource.data.partnerId == request.auth.uid);
-      }
     }
     
-    // Regras para a coleÃ§Ã£o de surpresas
+    // Regras para a coleção de surpresas
     match /surprises/{surpriseId} {
       // Permitir criar surpresa se estiver autenticado e for o remetente
       allow create: if request.auth != null
@@ -77,44 +53,64 @@ service cloud.firestore {
       allow read: if request.auth != null
                   && resource.data.senderId == request.auth.uid;
 
-      // Permitir deletar apenas se for o destinatÃ¡rio
+      // Permitir deletar apenas se for o destinatário
       allow delete: if request.auth != null
                     && resource.data.recipientId == request.auth.uid;
 
-      // Permitir atualizar (marcar como vista, por exemplo) se for o destinatÃ¡rio
+      // Permitir atualizar (marcar como vista, por exemplo) se for o destinatário
       allow update: if request.auth != null
                     && resource.data.recipientId == request.auth.uid;
     }
 
-    // Regras para a coleÃ§Ã£o de notificaÃ§Ãµes/convites
+    // Regras para a coleção de notificações/convites
     match /notifications/{notificationId} {
-      // Permitir criar notificaÃ§Ã£o se estiver autenticado
+      // Permitir criar notificação se estiver autenticado
       allow create: if request.auth != null
                     && request.resource.data.senderId == request.auth.uid;
 
-      // Permitir ler notificaÃ§Ãµes recebidas OU enviadas
+      // Permitir ler notificações recebidas OU enviadas
       allow read: if request.auth != null
                   && (resource.data.recipientId == request.auth.uid
                       || resource.data.senderId == request.auth.uid);
 
-      // Permitir atualizar notificaÃ§Ãµes (aceitar, rejeitar, etc.)
+      // Permitir atualizar notificações (aceitar, rejeitar, etc.)
       allow update: if request.auth != null
                     && (resource.data.recipientId == request.auth.uid
                         || resource.data.senderId == request.auth.uid);
 
-      // Permitir deletar prÃ³prias notificaÃ§Ãµes
+      // Permitir deletar próprias notificações
       allow delete: if request.auth != null
                     && (resource.data.recipientId == request.auth.uid
                         || resource.data.senderId == request.auth.uid);
     }
 
+    // Regras para conflitos de data
+    match /dateConflicts/{conflictId} {
+      // Permitir criar conflito
+      allow create: if request.auth != null;
+
+      // Permitir ler conflitos relacionados ao usuário
+      allow read: if request.auth != null
+                  && (resource.data.user1Id == request.auth.uid
+                      || resource.data.user2Id == request.auth.uid);
+
+      // Permitir atualizar conflitos relacionados ao usuário
+      allow update: if request.auth != null
+                    && (resource.data.user1Id == request.auth.uid
+                        || resource.data.user2Id == request.auth.uid);
+
+      // Permitir deletar conflitos resolvidos
+      allow delete: if request.auth != null
+                    && (resource.data.user1Id == request.auth.uid
+                        || resource.data.user2Id == request.auth.uid);
+    }
 
     // ===== CHALLENGES (Desafios do Dia) =====
     match /challenges/{challengeId} {
       allow read, write: if request.auth != null;
     }
 
-    // ===== EVENTS (PrÃ³ximos Eventos) =====
+    // ===== EVENTS (Próximos Eventos) =====
     match /events/{eventId} {
       allow read, write: if request.auth != null;
     }
@@ -124,12 +120,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // ===== LAYOUT (ConfiguraÃ§Ã£o da Home) =====
+    // ===== LAYOUT (Configuração da Home) =====
     match /layout/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    
+    // ===== INVITES (Convites de Vinculação) =====
+    match /invites/{inviteId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if request.auth != null;
+    }
   }
 }
-

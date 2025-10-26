@@ -136,6 +136,8 @@ export function useDashboardData(userId, partnerId) {
     };
   }, [userId, partnerId]);
 
+  // Notificações ficam unificadas em 'notifications'
+
   return {
     surprises,
     notifications,

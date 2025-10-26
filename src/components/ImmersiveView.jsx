@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import MomentCard from './MomentCard';
 
-export default function ImmersiveView({ moments, onReact, isPrivateMode, onClose }) {
+export default function ImmersiveView({ moments, onReact, isPrivateMode, onClose, revealedSurprises, onRevealSurprise }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -116,6 +116,8 @@ export default function ImmersiveView({ moments, onReact, isPrivateMode, onClose
               onReact={onReact}
               isPrivateMode={isPrivateMode}
               size="large"
+              isRevealed={revealedSurprises.has(currentMoment.id)}
+              onReveal={() => onRevealSurprise(currentMoment.id)}
             />
           </div>
 

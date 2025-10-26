@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Music, Image, Flame, Heart } from 'lucide-react';
+import { Music, Image, Flame } from 'lucide-react';
 
-export default function HeroCounter({ daysTogether, musicCount, photoCount, streak }) {
-  const [animatedDays, setAnimatedDays] = useState(0);
+export default function HeroCounter({ musicCount, photoCount, streak }) {
   const [animatedMusic, setAnimatedMusic] = useState(0);
   const [animatedPhotos, setAnimatedPhotos] = useState(0);
   const [animatedStreak, setAnimatedStreak] = useState(0);
@@ -19,14 +18,12 @@ export default function HeroCounter({ daysTogether, musicCount, photoCount, stre
       const progress = currentStep / steps;
       const easeOutQuad = 1 - Math.pow(1 - progress, 3);
 
-      setAnimatedDays(Math.floor(daysTogether * easeOutQuad));
       setAnimatedMusic(Math.floor(musicCount * easeOutQuad));
       setAnimatedPhotos(Math.floor(photoCount * easeOutQuad));
       setAnimatedStreak(Math.floor(streak * easeOutQuad));
 
       if (currentStep >= steps) {
         clearInterval(timer);
-        setAnimatedDays(daysTogether);
         setAnimatedMusic(musicCount);
         setAnimatedPhotos(photoCount);
         setAnimatedStreak(streak);
@@ -34,17 +31,9 @@ export default function HeroCounter({ daysTogether, musicCount, photoCount, stre
     }, interval);
 
     return () => clearInterval(timer);
-  }, [daysTogether, musicCount, photoCount, streak]);
+  }, [musicCount, photoCount, streak]);
 
   const stats = [
-    {
-      label: 'Dias Juntos',
-      value: animatedDays,
-      icon: Heart,
-      color: 'text-primary-600',
-      iconBg: 'bg-primary-500/10',
-      iconColor: 'text-primary-600',
-    },
     {
       label: 'Músicas',
       value: animatedMusic,
@@ -73,7 +62,7 @@ export default function HeroCounter({ daysTogether, musicCount, photoCount, stre
 
   return (
     <div className="bg-theme-secondary rounded-2xl p-6 border border-border-color shadow-sm">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 lg:grid-cols-3 gap-4">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
