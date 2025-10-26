@@ -11,8 +11,14 @@ import {
 } from 'firebase/firestore';
 import { showToast } from '../components/Toast';
 
-export function usePartnerActions(userId, profile, setModal) {
-  const handleSendLinkInvite = async (partnerIdentifier, relationshipStartDate) => {
+// Optional global updater to refresh profile without threading through all props
+let profileUpdater = null;
+export const setProfileUpdater = (fn) => {
+  profileUpdater = typeof fn === 'function' ? fn : null;
+};
+
+export function usePartnerActions(userId, profile, setModal, setProfile) {
+  const handleSendLinkInvite = async (partnerIdentifier) => {
     try {
       const usersRef = collection(db, 'users');
       let q;
@@ -42,11 +48,7 @@ export function usePartnerActions(userId, profile, setModal) {
         return false;
       }
 
-      if (partnerData.partnerId) {
-        showToast('Este usuário já está vinculado a outra pessoa', 'error');
-        return false;
-      }
-
+      // Check existing pending invite
       const existingInvites = query(
         collection(db, 'notifications'),
         where('senderId', '==', userId),
@@ -61,13 +63,23 @@ export function usePartnerActions(userId, profile, setModal) {
         return false;
       }
 
+      // Avoid sending invite if link already exists
+      const myLinksRef = collection(db, 'users', userId, 'links');
+      const alreadyLinkedQ = query(myLinksRef, where('partnerId', '==', partnerId));
+      const alreadyLinkedSnap = await getDocs(alreadyLinkedQ);
+      if (!alreadyLinkedSnap.empty) {
+        showToast('Vocês já estão vinculados', 'info');
+        return false;
+      }
+
       const notificationData = {
         type: 'link_invite',
         senderId: userId,
         senderName: profile.name,
+        senderPhotoURL: profile.photoURL || '',
+        senderAvatarBg: profile.avatarBg || '',
         recipientId: partnerId,
         recipientName: partnerData.name,
-        senderDate: relationshipStartDate,
         status: 'pending',
         createdAt: new Date().toISOString(),
       };
@@ -90,7 +102,7 @@ export function usePartnerActions(userId, profile, setModal) {
       setModal({
         isOpen: true,
         title: 'Desvincular contas?',
-        message: `Tem certeza que deseja desvincular sua conta de ${profile.partnerName}? Todas as surpresas serão mantidas, mas vocês não estarão mais vinculados.`,
+        message: `Tem certeza que deseja desvincular sua conta de ${profile.partnerName}? Todas as surpresas serao mantidas, mas voces nao estarao mais vinculados.`,
         type: 'warning',
         showCancel: true,
         confirmText: 'Desvincular',
@@ -127,8 +139,15 @@ export function usePartnerActions(userId, profile, setModal) {
 
             await Promise.all(deletePromises);
 
+            const updater = typeof setProfile === 'function' ? setProfile : profileUpdater;
+            if (typeof updater === 'function') {
+              updater((prev) => ({
+                ...prev,
+                partnerId: null,
+                partnerName: null,
+              }));
+            }
             showToast('Contas desvinculadas com sucesso', 'success');
-            window.location.reload();
             resolve(true);
           } catch (error) {
             console.error('Erro ao desvincular:', error);

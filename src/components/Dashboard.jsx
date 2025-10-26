@@ -1,25 +1,22 @@
-import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { showToast } from './Toast';
+import Modal from './Modal';
 import ProfileSettings from './ProfileSettings';
 import DashboardHeader from './dashboard/DashboardHeader';
 import BottomNavigation from './dashboard/BottomNavigation';
 import LinkPartnerModal from './dashboard/LinkPartnerModal';
 import CreateSurpriseModal from './dashboard/CreateSurpriseModal';
-import HeroCounter from './HeroCounter';
-import ConstellationView from './ConstellationView';
-import CreateMomentFAB from './CreateMomentFAB';
-import TimelineSlider from './TimelineSlider';
-import MomentOfDay from './MomentOfDay';
-import ImmersiveView from './ImmersiveView';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useMoments } from '../hooks/useMoments';
 import { usePartnerActions } from '../hooks/usePartnerActions';
+import { useLinks } from '../hooks/useLinks';
 import { useNotificationActions } from '../hooks/useNotificationActions';
 import HomeTab from './dashboard/HomeTab';
 import SurprisesTab from './dashboard/SurprisesTab';
-import { Home, Gift, Eye, EyeOff, Sparkles, Search, Heart, User, Flame, Plus, LinkIcon, Calendar, X, Check, Users, Clock, Trash2, Music, MessageCircle, Image as ImageIcon } from 'lucide-react';
+import VinculosTab from './dashboard/VinculosTab';
+import { Home, Gift, Users } from 'lucide-react';
 
 export default function Dashboard({ profile, onLogout, userId, setModal }) {
   // UI State
@@ -29,12 +26,41 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   const [showNewSurprise, setShowNewSurprise] = useState(false);
   const [viewMode, setViewMode] = useState('constellation');
   const [isPrivateMode, setIsPrivateMode] = useState(false);
+  const [revealedSurprises, setRevealedSurprises] = useState(new Set());
+
+  const handleRevealSurprise = (surpriseId) => {
+    setRevealedSurprises((prev) => new Set(prev).add(surpriseId));
+  };
+  
+
+  const { links } = useLinks(userId);
+  const [activeLink, setActiveLink] = useState(null);
+  // Persist and restore vínculo principal por usuário
+  useEffect(() => {
+    if (links && links.length > 0) {
+      try {
+        const key = `activeLink:${userId}`;
+        const savedPartnerId = localStorage.getItem(key);
+        const found = savedPartnerId ? links.find((l) => l.partnerId === savedPartnerId) : null;
+        setActiveLink(found || links[0]);
+      } catch {
+        setActiveLink(links[0]);
+      }
+    } else {
+      setActiveLink(null);
+    }
+  }, [links, userId]);
+
+  const handleSetActiveLink = (link) => {
+    setActiveLink(link);
+    try {
+      localStorage.setItem(`activeLink:${userId}`, link?.partnerId || '');
+    } catch {}
+  };
 
   // Custom Hooks
-  const { surprises, notifications, dateConflict, partnerProfile, loading } = useDashboardData(
-    userId,
-    profile.partnerId
-  );
+  const [modal, setModalLocal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+  const { surprises, notifications, partnerProfile, loading } = useDashboardData(userId);
 
   const {
     moments,
@@ -50,57 +76,44 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   const { handleSendLinkInvite, handleUnlinkPartner } = usePartnerActions(
     userId,
     profile,
-    setModal
+    setModalLocal
   );
 
-  const {
-    acceptInvite,
-    rejectInvite,
-    respondToProposal,
-    dateChangeResponse,
-  } = useNotificationActions(userId, profile);
+  const { acceptInvite, rejectInvite } = useNotificationActions(userId, profile);
 
   // Notification handlers with modal support
   const handleAcceptInvite = (notification) => {
-    setModal({
+    setModalLocal({
       isOpen: true,
-      title: `Aceitar convite de ${notification.senderName}?`,
+      title: `Convite de ${notification.senderName}`,
       customContent: (
         <div className="space-y-4">
           <p className="text-gray-600">
             {notification.senderName} quer vincular as contas de vocês!
           </p>
-          <p className="text-sm text-gray-500">
-            {notification.senderName} informou que o relacionamento começou em:{' '}
-            <strong>
-              {new Date(notification.senderDate).toLocaleDateString('pt-BR')}
-            </strong>
-          </p>
-          <div>
-            <label className="block text-sm font-medium text-theme-secondary mb-2">
-              Quando você acha que o namoro começou?
-            </label>
-            <input
-              type="date"
-              id="recipient-date-input"
-              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              required
-            />
+          <div className="flex gap-2 pt-2">
+            <button
+              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all"
+              onClick={async () => { await acceptInvite(notification); setModalLocal((m) => ({ ...m, isOpen: false })); }}
+            >
+              Aceitar
+            </button>
+            <button
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg"
+              onClick={async () => { await rejectInvite(notification.id); setModalLocal((m) => ({ ...m, isOpen: false })); }}
+            >
+              Rejeitar
+            </button>
           </div>
         </div>
       ),
       type: 'info',
-      showCancel: true,
-      confirmText: 'Aceitar',
-      onConfirm: async () => {
-        const recipientDate = document.getElementById('recipient-date-input').value;
-        await acceptInvite(notification, recipientDate);
-      },
+      confirmText: 'Fechar',
     });
   };
 
   const handleRejectInvite = (notificationId) => {
-    setModal({
+    setModalLocal({
       isOpen: true,
       title: 'Rejeitar convite?',
       message: 'Tem certeza que deseja rejeitar este convite?',
@@ -113,35 +126,42 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
     });
   };
 
-  const handleRespondToProposal = async (notification, accept) => {
-    await respondToProposal(notification, accept);
-  };
-
-  const handleDateChangeResponse = async (notification, accept) => {
-    await dateChangeResponse(notification, accept);
+  const handleMarkNotificationRead = async (notification) => {
+    try {
+      if (!notification.read) {
+        await updateDoc(doc(db, 'notifications', notification.id), { read: true });
+      }
+    } catch (e) {
+      // noop
+    }
   };
 
   // Notification bell handlers
-  const handleNotificationClick = (notification) => {
-    // Redirecionar baseado no tipo de notificação
+  const handleNotificationClick = async (notification) => {
+    // marcar como lida
+    try {
+      if (!notification.read) {
+        await updateDoc(doc(db, 'notifications', notification.id), { read: true });
+      }
+    } catch (e) {
+      // não bloqueia a ação
+    }
+
     switch (notification.type) {
-      case 'link_request':
+      case 'link_invite':
         handleAcceptInvite(notification);
-        break;
-      case 'date_change_proposal':
-        handleRespondToProposal(notification, true);
         break;
       case 'new_surprise':
         setActiveTab('surprises');
         break;
       default:
+        setActiveTab('surprises');
         break;
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      // Implementar lógica para marcar todas como lidas
       for (const notification of pendingNotifications) {
         if (!notification.read) {
           await updateDoc(doc(db, 'notifications', notification.id), {
@@ -158,7 +178,6 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
   const handleClearAllNotifications = async () => {
     try {
-      // Deletar todas as notificações
       for (const notification of pendingNotifications) {
         await deleteDoc(doc(db, 'notifications', notification.id));
       }
@@ -169,22 +188,12 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
     }
   };
 
-  // Helpers
-  const daysTogetherCalculator = () => {
-    if (!profile.relationshipStart) return 0;
-    const start = new Date(profile.relationshipStart);
-    const today = new Date();
-    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
-
-  const daysTogether = daysTogetherCalculator();
   const pendingNotifications = notifications.filter((n) => n.status === 'pending');
 
   // Handlers
   const handleCreateSurprise = async (newSurprise) => {
-    if (!profile.partnerId) {
-      showToast('Você precisa vincular com seu parceiro primeiro!', 'error');
+    if (!activeLink) {
+      showToast('Vincule-se a alguém e selecione um vínculo principal!', 'error');
       return;
     }
 
@@ -192,8 +201,10 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
       await addDoc(collection(db, 'surprises'), {
         senderId: userId,
         senderName: profile.name,
-        recipientId: profile.partnerId,
-        recipientName: profile.partnerName,
+        senderPhotoURL: profile.photoURL || '',
+        senderAvatarBg: profile.avatarBg || '',
+        recipientId: activeLink.partnerId,
+        recipientName: activeLink.partnerName,
         type: newSurprise.type,
         title: newSurprise.title,
         content: newSurprise.content,
@@ -208,7 +219,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   };
 
   const handleDeleteSurprise = async (surpriseId) => {
-    setModal({
+    setModalLocal({
       isOpen: true,
       title: 'Excluir surpresa',
       message: 'Deseja realmente apagar esta surpresa?',
@@ -276,28 +287,25 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
     { id: 'surprises', label: 'Surpresas', icon: Gift },
   ];
 
-  const getSurpriseIcon = (type) => {
-    const icons = {
-      message: <MessageCircle className="w-5 h-5" />,
-      photo: <ImageIcon className="w-5 h-5" />,
-      music: <Music className="w-5 h-5" />,
-      date: <Calendar className="w-5 h-5" />,
-    };
-    return icons[type] || <Gift className="w-5 h-5" />;
-  };
-
-  const getSurpriseGradient = (type) => {
-    const gradients = {
-      message: 'from-cyan-400 to-green-400',
-      photo: 'from-pink-400 to-orange-400',
-      music: 'from-yellow-400 to-orange-500',
-      date: 'from-pink-400 via-orange-400 to-red-500',
-    };
-    return gradients[type] || 'from-pink-400 to-orange-400';
-  };
+  // Extend tabs shown in BottomNavigation with Vínculos
+  const tabsNav = [
+    ...tabs,
+    { id: 'vinculos', label: 'Vínculos', icon: Users },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-bg-main pb-20 md:pb-8">
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={() => setModalLocal((m) => ({ ...m, isOpen: false }))}
+        title={modal.title}
+        message={modal.message}
+        customContent={modal.customContent}
+        type={modal.type}
+        confirmText={modal.confirmText}
+        showCancel={modal.showCancel}
+        onConfirm={modal.onConfirm}
+      />
       {/* Settings Modal */}
       {showSettings && (
         <ProfileSettings
@@ -314,6 +322,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         onNotificationClick={handleNotificationClick}
         onMarkAsRead={handleMarkAllAsRead}
         onClearAll={handleClearAllNotifications}
+        onMarkOne={handleMarkNotificationRead}
         onSettingsClick={() => setShowSettings(true)}
         onLogout={onLogout}
       />
@@ -324,19 +333,32 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         {activeTab === 'home' && (
           <HomeTab
             profile={profile}
-            daysTogether={daysTogether}
             recentSurprises={surprises.slice().sort((a, b) =>
               new Date(b.createdAt) - new Date(a.createdAt)
             )}
             onLinkPartner={() => setShowLinkPartner(true)}
             onCreateSurprise={() => setShowNewSurprise(true)}
+            hasPartner={!!activeLink}
+            partnerName={activeLink?.partnerName || ''}
+            partnerAvatarBg={partnerProfile?.avatarBg || ''}
+            revealedSurprises={revealedSurprises}
+            onRevealSurprise={handleRevealSurprise}
+          />
+        )}
+
+        {/* VÍNCULOS TAB */}
+        {activeTab === 'vinculos' && (
+          <VinculosTab
+            profile={profile}
+            onLinkPartner={() => setShowLinkPartner(true)}
+            activePartnerId={activeLink?.partnerId}
+            onSetActiveLink={handleSetActiveLink}
           />
         )}
 
         {/* SURPRISES TAB */}
         {activeTab === 'surprises' && (
           <SurprisesTab
-            daysTogether={daysTogether}
             musicCount={musicCount}
             photoCount={photoCount}
             streak={streak}
@@ -344,13 +366,15 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
             filteredMoments={filteredMoments}
             viewMode={viewMode}
             isPrivateMode={isPrivateMode}
-            hasPartner={!!profile.partnerId}
-            partnerName={profile.partnerName}
+            hasPartner={!!activeLink}
+            partnerName={activeLink?.partnerName}
             onPeriodChange={handlePeriodChange}
             onViewModeChange={setViewMode}
             onPrivateModeToggle={() => setIsPrivateMode(!isPrivateMode)}
             onReact={handleReact}
             onCreateMoment={handleCreateMoment}
+            revealedSurprises={revealedSurprises}
+            onRevealSurprise={handleRevealSurprise}
           />
         )}
 
@@ -359,7 +383,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
       {/* Bottom Navigation - Esconde quando settings está aberto */}
       {!showSettings && (
         <BottomNavigation
-          tabs={tabs}
+          tabs={tabsNav}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
@@ -383,3 +407,31 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

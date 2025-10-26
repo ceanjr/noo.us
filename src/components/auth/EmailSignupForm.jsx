@@ -13,8 +13,6 @@ import { Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
  * @param {Function} props.setPassword - Setter for password state
  * @param {string} props.confirmPassword - Confirm password value
  * @param {Function} props.setConfirmPassword - Setter for confirm password state
- * @param {string} props.relationshipStart - Relationship start date value
- * @param {Function} props.setRelationshipStart - Setter for relationship start date state
  * @param {boolean} props.showPassword - Whether to show password field
  * @param {Function} props.setShowPassword - Setter for show password state
  * @param {boolean} props.showConfirmPassword - Whether to show confirm password field
@@ -27,14 +25,14 @@ import { Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 export default function EmailSignupForm({
   name,
   setName,
+  gender,
+  setGender,
   email,
   setEmail,
   password,
   setPassword,
   confirmPassword,
   setConfirmPassword,
-  relationshipStart,
-  setRelationshipStart,
   showPassword,
   setShowPassword,
   showConfirmPassword,
@@ -60,6 +58,21 @@ export default function EmailSignupForm({
             placeholder="João Silva"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-theme-secondary mb-1">
+            Sexo
+          </label>
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+          >
+            <option value="Masculino">Masculino</option>
+            <option value="Feminino">Feminino</option>
+            <option value="Gênero Neutro">Gênero Neutro</option>
+          </select>
         </div>
 
         <div>
@@ -141,19 +154,6 @@ export default function EmailSignupForm({
               {passwordError}
             </p>
           )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-theme-secondary mb-1">
-            Início do Relacionamento
-          </label>
-          <input
-            type="date"
-            value={relationshipStart}
-            onChange={(e) => setRelationshipStart(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            required
-          />
         </div>
 
         <button

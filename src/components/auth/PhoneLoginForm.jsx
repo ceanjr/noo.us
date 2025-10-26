@@ -1,4 +1,4 @@
-import { Smartphone, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Smartphone, AlertCircle } from 'lucide-react';
 
 /**
  * Phone login form component for user authentication with phone number
@@ -7,34 +7,18 @@ import { Smartphone, Eye, EyeOff, AlertCircle } from 'lucide-react';
  * @param {Object} props - Component props
  * @param {string} props.phoneNumber - Phone number value
  * @param {Function} props.onPhoneChange - Handler for phone number changes
- * @param {string} props.password - Password value
- * @param {Function} props.setPassword - Setter for password state
- * @param {boolean} props.showPassword - Whether to show password field
- * @param {Function} props.setShowPassword - Setter for show password state
- * @param {boolean} props.rememberMe - Remember me checkbox value
- * @param {Function} props.setRememberMe - Setter for remember me state
  * @param {string} props.phoneError - Phone validation error message
- * @param {string} props.passwordError - Password validation error message
  * @param {Function} props.formatPhoneDisplay - Function to format phone number for display
  * @param {Function} props.onSubmit - Form submission handler
- * @param {Function} props.onForgotPassword - Forgot password handler
  * @param {Function} props.onGoogleSignIn - Google sign-in handler
  * @returns {JSX.Element} Phone login form component
  */
 export default function PhoneLoginForm({
   phoneNumber,
   onPhoneChange,
-  password,
-  setPassword,
-  showPassword,
-  setShowPassword,
-  rememberMe,
-  setRememberMe,
   phoneError,
-  passwordError,
   formatPhoneDisplay,
   onSubmit,
-  onForgotPassword,
   onGoogleSignIn,
 }) {
   return (
@@ -62,68 +46,11 @@ export default function PhoneLoginForm({
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-theme-secondary mb-1">
-            Senha
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-              }}
-              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="Sua senha"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? (
-                <EyeOff className="w-5 h-5" />
-              ) : (
-                <Eye className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-          {passwordError && (
-            <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-              <AlertCircle className="w-4 h-4" />
-              {passwordError}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 text-pink-500 border-gray-300 rounded focus:ring-pink-500"
-            />
-            <span className="text-sm text-gray-600">
-              Lembrar-me
-            </span>
-          </label>
-
-          <button
-            type="button"
-            onClick={onForgotPassword}
-            className="text-sm text-pink-600 hover:text-pink-700 font-medium"
-          >
-            Esqueci a senha
-          </button>
-        </div>
-
         <button
           type="submit"
           className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
         >
-          Entrar
+          Enviar Código SMS
         </button>
       </form>
 

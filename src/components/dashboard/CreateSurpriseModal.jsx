@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { X, Gift, MessageCircle, Image as ImageIcon, Music, Calendar } from 'lucide-react';
+import {
+  X,
+  Gift,
+  MessageCircle,
+  Image as ImageIcon,
+  Music,
+  Calendar,
+} from 'lucide-react';
 import CreateMessageModal from './CreateMessageModal';
 import CreatePhotoModal from './CreatePhotoModal';
 import CreateMusicModal from './CreateMusicModal';
@@ -104,10 +111,12 @@ export default function CreateSurpriseModal({ onClose, onSubmit, userId }) {
                     onClick={() => handleTypeSelect(type)}
                     className="p-5 rounded-xl border-2 border-theme hover:border-gray-300 hover:bg-gray-50 transition-all flex flex-col items-center justify-center gap-3 group"
                   >
-                    <div className={`${getSurpriseColor(type)} p-3 rounded-xl group-hover:scale-110 transition-transform`}>
-                      <div className="text-white">
-                        {getSurpriseIcon(type)}
-                      </div>
+                    <div
+                      className={`${getSurpriseColor(
+                        type
+                      )} p-3 rounded-xl group-hover:scale-110 transition-transform`}
+                    >
+                      <div className="text-white">{getSurpriseIcon(type)}</div>
                     </div>
                     <span className="text-sm font-bold text-theme-secondary">
                       {getSurpriseLabel(type)}

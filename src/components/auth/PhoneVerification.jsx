@@ -1,4 +1,4 @@
-import { Smartphone } from 'lucide-react';
+﻿import { Smartphone } from 'lucide-react';
 
 /**
  * Phone verification component for SMS code verification
@@ -29,17 +29,17 @@ export default function PhoneVerification({
           <Smartphone className="w-8 h-8 text-pink-500" />
         </div>
         <h3 className="text-lg font-semibold mb-2">
-          Código Enviado!
+          CÃ³digo Enviado!
         </h3>
         <p className="text-sm text-gray-600">
-          Digite o código de 6 dígitos enviado para{' '}
+          Digite o cÃ³digo de 6 dÃ­gitos enviado para{' '}
           {formatPhoneDisplay(phoneNumber)}
         </p>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-theme-secondary mb-1">
-          Código de Verificação
+          CÃ³digo de VerificaÃ§Ã£o
         </label>
         <input
           type="text"
@@ -63,7 +63,7 @@ export default function PhoneVerification({
         disabled={verificationCode.length !== 6}
         className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Verificar Código
+        Verificar CÃ³digo
       </button>
 
       <div className="text-center">
@@ -72,9 +72,10 @@ export default function PhoneVerification({
           onClick={onResendCode}
           className="text-sm text-pink-600 hover:text-pink-700 font-medium"
         >
-          Reenviar código
+          Reenviar cÃ³digo
         </button>
       </div>
     </form>
   );
 }
+

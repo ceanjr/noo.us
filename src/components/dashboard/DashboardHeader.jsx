@@ -17,6 +17,7 @@ export default function DashboardHeader({
   onNotificationClick,
   onMarkAsRead,
   onClearAll,
+  onMarkOne,
   onSettingsClick,
   onLogout,
 }) {
@@ -45,6 +46,7 @@ export default function DashboardHeader({
               onNotificationClick={onNotificationClick}
               onMarkAsRead={onMarkAsRead}
               onClearAll={onClearAll}
+              onMarkOne={onMarkOne}
             />
 
             <button

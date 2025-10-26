@@ -1,0 +1,15 @@
+{
+  "github.copilot.editor.enableAutoCompletions": true,
+  "github.copilot.chat.experimentalAllowEdits": true,
+  "github.copilot.chat.editBehavior": "applySilently",
+  "github.copilot.chat.showEditPreview": false,
+  "github.copilot.chat.autoApplyEdits": true,
+  "github.copilot.chat.workspaceEdits": "allow",
+  "github.copilot.inlineSuggest.enable": true,
+  "github.copilot.suggestionCount": 3,
+  "github.copilot.enable": {
+    "*": true
+  },
+  "security.workspace.trust.untrustedFiles": "open",
+  "security.workspace.trust.startupPrompt": "never"
+}

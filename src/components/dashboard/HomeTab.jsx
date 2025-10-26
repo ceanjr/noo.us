@@ -1,36 +1,42 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   Heart,
   User,
   Music,
-  MessageCircle,
-  Image as ImageIcon,
-  Calendar,
   Plus,
   LinkIcon,
 } from 'lucide-react';
 import trechos from '../../data/trechos.json';
+import MomentCard from '../MomentCard';
+import DailyQuotePanel from './DailyQuotePanel';
+import NewSurprisesPanel from './NewSurprisesPanel';
 
 /**
  * HomeTab - Aba inicial do Dashboard
  *
  * @param {Object} props
- * @param {Object} props.profile - Perfil do usuário atual
- * @param {number} props.daysTogether - Dias de relacionamento
+ * @param {Object} props.profile - Perfil do usuÃ¡rio atual
  * @param {Array} props.recentSurprises - Surpresas recentes
  * @param {Function} props.onLinkPartner - Callback para vincular parceiro
  * @param {Function} props.onCreateSurprise - Callback para criar surpresa
+ * @param {Set} props.revealedSurprises - Set of revealed surprise IDs
+ * @param {Function} props.onRevealSurprise - Handler to reveal a surprise
+ * @param {string} [props.partnerAvatarBg] - Cor de fundo do avatar do parceiro
  */
 export default function HomeTab({
   profile,
-  daysTogether,
   recentSurprises = [],
   onLinkPartner,
   onCreateSurprise,
+  hasPartner = false,
+  partnerName = '',
+  partnerAvatarBg = '',
+  revealedSurprises,
+  onRevealSurprise,
 }) {
   const [dailyQuote, setDailyQuote] = useState(null);
 
-  // Seleciona um trecho aleatório por dia
+  // Seleciona um trecho aleatÃ³rio por dia
   useEffect(() => {
     const today = new Date().toDateString();
     const savedDate = localStorage.getItem('dailyQuoteDate');
@@ -52,18 +58,22 @@ export default function HomeTab({
       <div className="bg-theme-secondary rounded-2xl border border-border-color shadow-sm p-4 sm:p-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative flex-shrink-0">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary-500 flex items-center justify-center shadow-lg overflow-hidden">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden" style={{ backgroundColor: profile.avatarBg || undefined }}>
               {profile.photoURL ? (
                 <img
                   src={profile.photoURL}
                   alt={profile.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain p-1"
                 />
               ) : (
-                <User className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                <img
+                  src="/images/icons/neutral.png"
+                  alt="Avatar"
+                  className="w-full h-full object-contain p-1"
+                />
               )}
             </div>
-            {profile.partnerId && (
+            {hasPartner && (
               <div className="absolute -bottom-1 -right-1 bg-green-500 p-1 rounded-full">
                 <Heart className="w-3 h-3 text-white" fill="white" />
               </div>
@@ -74,13 +84,13 @@ export default function HomeTab({
             <h2 className="text-xl sm:text-2xl font-display font-bold text-theme-primary truncate">
               {profile.name}
             </h2>
-            {profile.partnerName && (
+            {partnerName && (
               <p className="text-sm sm:text-base text-theme-secondary flex items-center gap-1 mt-1">
                 <Heart
                   className="w-4 h-4 text-primary-500"
                   fill="currentColor"
                 />
-                <span className="truncate">Com {profile.partnerName}</span>
+                <span className="truncate">Com {partnerName}</span>
               </p>
             )}
           </div>
@@ -88,106 +98,10 @@ export default function HomeTab({
       </div>
 
       {/* Trecho Musical do Dia */}
-      {dailyQuote && (
-        <div className="bg-secondary-50 rounded-2xl border border-secondary-200 shadow-sm p-6">
-          <div className="flex items-start gap-4">
-            <div className="bg-secondary-500 p-3 rounded-xl shadow-md flex-shrink-0">
-              <Music className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-bold text-secondary-600 mb-2">
-                Trecho do Dia
-              </h3>
-              <p className="text-base sm:text-lg italic text-theme-primary mb-2 leading-relaxed">
-                "{dailyQuote.trecho}"
-              </p>
-              <p className="text-sm text-theme-secondary font-medium">
-                — {dailyQuote.artista}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <DailyQuotePanel dailyQuote={dailyQuote} />
 
-      {/* Feed de Surpresas Recentes */}
-      {recentSurprises.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold text-theme-secondary px-1">
-            Surpresas Recentes
-          </h3>
-          <div className="space-y-2">
-            {recentSurprises.slice(0, 5).map((surprise) => {
-              const getSurpriseIcon = (type) => {
-                const icons = {
-                  message: MessageCircle,
-                  photo: ImageIcon,
-                  music: Music,
-                  date: Calendar,
-                };
-                return icons[type] || MessageCircle;
-              };
-
-              const getSurpriseColor = (type) => {
-                switch (type) {
-                  case 'message':
-                    return 'bg-accent-500';
-                  case 'photo':
-                    return 'bg-primary-500';
-                  case 'music':
-                    return 'bg-secondary-500';
-                  case 'date':
-                    return 'bg-lime-500';
-                  default:
-                    return 'bg-primary-500';
-                }
-              };
-
-              const Icon = getSurpriseIcon(surprise.type);
-              const colorClass = getSurpriseColor(surprise.type);
-
-              return (
-                <div
-                  key={surprise.id}
-                  className="bg-theme-secondary rounded-xl border border-border-color shadow-sm p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`${colorClass} p-2 rounded-lg flex-shrink-0 shadow-sm`}
-                    >
-                      <Icon className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h4 className="font-bold text-theme-primary text-sm truncate">
-                          {surprise.title}
-                        </h4>
-                        <span className="text-xs text-theme-secondary whitespace-nowrap">
-                          {new Date(surprise.createdAt).toLocaleDateString(
-                            'pt-BR',
-                            {
-                              day: '2-digit',
-                              month: 'short',
-                            }
-                          )}
-                        </span>
-                      </div>
-                      <p className="text-sm text-theme-secondary line-clamp-2">
-                        {surprise.content}
-                      </p>
-                      <p className="text-xs text-theme-secondary mt-1">
-                        De: {surprise.senderName}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* CTA Button */}
-      {!profile.partnerId ? (
+      {/* Painel de Novas Surpresas */}\n      <NewSurprisesPanel recentSurprises={recentSurprises} profile={profile} partnerAvatarBg={partnerAvatarBg} />\n\n{/* CTA Button */}
+      {!hasPartner ? (
         <button
           onClick={onLinkPartner}
           className="w-full bg-accent-500 hover:bg-accent-600 text-white py-4 px-6 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
@@ -207,3 +121,7 @@ export default function HomeTab({
     </div>
   );
 }
+
+
+
+
