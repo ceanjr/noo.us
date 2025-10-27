@@ -74,7 +74,8 @@ export default function Toast() {
           <p className="flex-1 text-sm font-medium">{toast.message}</p>
           <button
             onClick={() => removeToast(toast.id)}
-            className="flex-shrink-0 hover:opacity-70 transition"
+            className="flex-shrink-0 hover:opacity-70 transition focus:ring-2 focus:ring-white focus:ring-offset-2 rounded"
+            aria-label="Fechar notificação"
           >
             <X className="w-5 h-5" />
           </button>

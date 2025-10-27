@@ -64,14 +64,16 @@ export default function Modal({
           {showCancel && (
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold transition"
+              className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold transition focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+              aria-label="Cancelar ação"
             >
               Cancelar
             </button>
           )}
           <button
             onClick={handleConfirm}
-            className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg"
+            className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-purple-600 transition shadow-lg focus:ring-2 focus:ring-purple-400 focus:ring-offset-2"
+            aria-label={confirmText}
           >
             {confirmText}
           </button>

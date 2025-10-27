@@ -1,9 +1,9 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { showToast } from './Toast';
 import Modal from './Modal';
-import ProfileSettings from './ProfileSettings';
+import LoadingSpinner from './LoadingSpinner';
 import DashboardHeader from './dashboard/DashboardHeader';
 import BottomNavigation from './dashboard/BottomNavigation';
 import LinkPartnerModal from './dashboard/LinkPartnerModal';
@@ -18,6 +18,9 @@ import SurprisesTab from './dashboard/SurprisesTab';
 import VinculosTab from './dashboard/VinculosTab';
 import { Home, Gift, Users } from 'lucide-react';
 import SurpriseDetailModal from './dashboard/SurpriseDetailModal';
+
+// Lazy load de componentes pesados
+const ProfileSettings = lazy(() => import('./ProfileSettings'));
 
 export default function Dashboard({ profile, onLogout, userId, setModal }) {
   // UI State
@@ -340,14 +343,22 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         showCancel={modal.showCancel}
         onConfirm={modal.onConfirm}
       />
-      {/* Settings Modal */}
+      {/* Settings Modal com Lazy Loading */}
       {showSettings && (
-        <ProfileSettings
-          profile={profile}
-          userId={userId}
-          onClose={() => setShowSettings(false)}
-          setModal={setModal}
-        />
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8">
+              <LoadingSpinner size="lg" text="Carregando configurações..." />
+            </div>
+          </div>
+        }>
+          <ProfileSettings
+            profile={profile}
+            userId={userId}
+            onClose={() => setShowSettings(false)}
+            setModal={setModal}
+          />
+        </Suspense>
       )}
 
       {/* Header */}
