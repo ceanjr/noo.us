@@ -1,0 +1,8 @@
+dist
+node_modules
+.astro
+*.log
+.env
+.firebase
+functions/node_modules
+coverage
