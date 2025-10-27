@@ -100,8 +100,12 @@ src/
 - ✅ Firebase Rules granulares
 - ✅ Validação de dados (frontend + backend)
 - ✅ reCAPTCHA em autenticação por telefone
-- ✅ Rate limiting (planejado)
+- ✅ **Rate limiting implementado** (Cloud Functions)
+  - 5 convites de vínculo por hora
+  - Bloqueio automático após limite excedido
+  - Limpeza automática diária de rate limits
 - ✅ Autenticação gerenciada pelo Firebase Auth
+- ✅ Proteção contra leitura pública de dados de usuários
 
 ## 🧪 Testes
 
@@ -131,21 +135,28 @@ npm run preview    # Preview da build
 
 ## 📱 Deploy
 
-### Firebase Hosting
+### Firebase Hosting + Cloud Functions
 
 ```bash
-# Build
+# Build do frontend
 npm run build
 
-# Deploy
+# Deploy completo (hosting + functions + rules)
 firebase deploy
+
+# Deploy apenas functions
+firebase deploy --only functions
+
+# Deploy apenas rules
+firebase deploy --only firestore:rules
 ```
 
-### Vercel
+### Vercel (apenas frontend)
 
 ```bash
 # Conectar repositório ao Vercel
 # Deploy automático no push para main
+# Nota: Cloud Functions precisam estar no Firebase
 ```
 
 ## 🐛 Troubleshooting
