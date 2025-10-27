@@ -7,6 +7,8 @@ import {
   onSnapshot,
   doc,
   getDoc,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import { showToast } from '../components/Toast';
 
@@ -35,26 +37,24 @@ export function useDashboardData(userId, partnerId) {
     loadPartnerProfile();
   }, [partnerId]);
 
-  // Carregar surpresas
+  // Carregar surpresas (com paginação e ordenação)
   useEffect(() => {
     if (!userId) return;
 
     const q = query(
       collection(db, 'surprises'),
-      where('recipientId', '==', userId)
+      where('recipientId', '==', userId),
+      orderBy('createdAt', 'desc'),
+      limit(100) // Limitar a 100 surpresas mais recentes
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const surprisesData = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
-          .sort((a, b) => {
-            return new Date(b.createdAt) - new Date(a.createdAt);
-          });
+        const surprisesData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
         setSurprises(surprisesData);
         setLoading(false);
       },
@@ -68,25 +68,23 @@ export function useDashboardData(userId, partnerId) {
     return () => unsubscribe();
   }, [userId]);
 
-  // Carregar notificações
+  // Carregar notificações (com paginação e ordenação)
   useEffect(() => {
     if (!userId) return;
 
     const q = query(
       collection(db, 'notifications'),
-      where('recipientId', '==', userId)
+      where('recipientId', '==', userId),
+      orderBy('createdAt', 'desc'),
+      limit(50) // Limitar a 50 notificações mais recentes
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const notificationsData = snapshot.docs
-          .map((doc) => {
-            return { id: doc.id, ...doc.data() };
-          })
-          .sort((a, b) => {
-            return new Date(b.createdAt) - new Date(a.createdAt);
-          });
+        const notificationsData = snapshot.docs.map((doc) => {
+          return { id: doc.id, ...doc.data() };
+        });
         setNotifications(notificationsData);
       },
       (error) => {

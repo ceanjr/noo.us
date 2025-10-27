@@ -6,7 +6,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, memo } from "react";
 import ReactionBar from "./ReactionBar";
 
 const typeVisuals = {
@@ -273,3 +273,13 @@ export default function MomentCard({
     </div>
   );
 }
+
+export default memo(MomentCard, (prevProps, nextProps) => {
+  // Comparação personalizada para evitar re-renders desnecessários
+  return (
+    prevProps.moment.id === nextProps.moment.id &&
+    prevProps.isRevealed === nextProps.isRevealed &&
+    prevProps.isPrivateMode === nextProps.isPrivateMode &&
+    prevProps.moment.reactions?.length === nextProps.moment.reactions?.length
+  );
+});

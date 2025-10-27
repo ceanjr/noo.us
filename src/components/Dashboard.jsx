@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { showToast } from './Toast';
@@ -29,7 +29,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   const [revealedSurprises, setRevealedSurprises] = useState(new Set());
   const [selectedSurprise, setSelectedSurprise] = useState(null);
 
-  const handleRevealSurprise = async (surpriseId) => {
+  const handleRevealSurprise = useCallback(async (surpriseId) => {
     setRevealedSurprises((prev) => {
       const next = new Set(prev);
       next.add(surpriseId);
@@ -44,13 +44,15 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
       console.error('Erro ao marcar surpresa como vista:', error);
       showToast('Não foi possível marcar a surpresa como vista.', 'error');
     }
-  };
-  const handleOpenSurpriseDetails = (moment) => {
+  }, []);
+
+  const handleOpenSurpriseDetails = useCallback((moment) => {
     setSelectedSurprise(moment);
-  };
-  const handleCloseSurpriseDetails = () => {
+  }, []);
+
+  const handleCloseSurpriseDetails = useCallback(() => {
     setSelectedSurprise(null);
-  };
+  }, []);
   
 
   const { links } = useLinks(userId);
@@ -222,8 +224,8 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
   const pendingNotifications = notifications.filter((n) => n.status === 'pending');
 
-  // Handlers
-  const handleCreateSurprise = async (newSurprise) => {
+  // Handlers memoizados
+  const handleCreateSurprise = useCallback(async (newSurprise) => {
     if (!activeLink) {
       showToast('Vincule-se a alguém e selecione um vínculo principal!', 'error');
       return;
@@ -248,7 +250,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
     } catch (error) {
       showToast('Erro ao criar surpresa', 'error');
     }
-  };
+  }, [activeLink, userId, profile.name, profile.photoURL, profile.avatarBg]);
 
   const handleDeleteSurprise = async (surpriseId) => {
     setModalLocal({
