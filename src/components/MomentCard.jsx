@@ -28,7 +28,7 @@ const typeVisuals = {
   },
 };
 
-export default function MomentCard({
+function MomentCard({
   moment,
   onReact,
   isPrivateMode,
