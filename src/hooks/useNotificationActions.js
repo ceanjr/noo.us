@@ -1,5 +1,5 @@
 import { db } from '../lib/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+import { collection, writeBatch, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { showToast } from '../components/Toast';
 
 /**
@@ -14,24 +14,35 @@ export function useNotificationActions(userId, profile) {
    * Aceitar convite de vinculação (lógica pura)
    */
   const acceptInvite = async (notification) => {
+    const batch = writeBatch(db);
+
     try {
-      // Criar vínculos nas subcoleções de ambos
-      await addDoc(collection(db, 'users', userId, 'links'), {
+      const relationship = notification.relationship || 'partner';
+
+      // Criar link para o usuário atual (receptor)
+      const currentUserLinkRef = doc(collection(db, 'users', userId, 'links'));
+      batch.set(currentUserLinkRef, {
         partnerId: notification.senderId,
         partnerName: notification.senderName,
+        relationship,
         createdAt: new Date().toISOString(),
       });
 
-      await addDoc(collection(db, 'users', notification.senderId, 'links'), {
+      // Criar link espelho para o remetente
+      const senderLinkRef = doc(collection(db, 'users', notification.senderId, 'links'));
+      batch.set(senderLinkRef, {
         partnerId: userId,
         partnerName: profile.name,
+        relationship,
         createdAt: new Date().toISOString(),
       });
 
       // Marcar notificação como aceita
-      await updateDoc(doc(db, 'notifications', notification.id), {
-        status: 'accepted',
-      });
+      const notificationRef = doc(db, 'notifications', notification.id);
+      batch.update(notificationRef, { status: 'accepted' });
+
+      // Commit do batch
+      await batch.commit();
 
       showToast('Vinculação realizada com sucesso!', 'success');
 
@@ -65,4 +76,3 @@ export function useNotificationActions(userId, profile) {
     rejectInvite,
   };
 }
-

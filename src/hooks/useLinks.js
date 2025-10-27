@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { auth, db } from '../lib/firebase';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, getDoc } from 'firebase/firestore';
 
 /**
  * useLinks - Escuta vínculos do usuário em /users/{uid}/links
@@ -17,9 +17,31 @@ export function useLinks(userId) {
     const q = query(collection(db, 'users', uid, 'links'));
     const unsub = onSnapshot(
       q,
-      (snap) => {
+      async (snap) => {
         const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setLinks(items);
+
+        // Fetch partner profiles
+        const linksWithProfiles = await Promise.all(
+          items.map(async (link) => {
+            if (!link.partnerId) return link;
+            try {
+              const partnerDoc = await getDoc(doc(db, 'users', link.partnerId));
+              if (partnerDoc.exists()) {
+                const partnerData = partnerDoc.data();
+                return {
+                  ...link,
+                  partnerPhotoURL: partnerData.photoURL,
+                  partnerAvatarBg: partnerData.avatarBg,
+                };
+              }
+            } catch (error) {
+              console.error('Error fetching partner profile:', error);
+            }
+            return link;
+          })
+        );
+
+        setLinks(linksWithProfiles);
         setLoading(false);
       },
       () => setLoading(false)

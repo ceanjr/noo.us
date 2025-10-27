@@ -4,9 +4,9 @@ export default function DailyQuotePanel({ dailyQuote }) {
   return (
     <div className="bg-secondary-50 rounded-2xl border border-secondary-200 shadow-sm p-6">
       <div className="flex items-start gap-4">
-        <div className="bg-secondary-500 p-3 rounded-xl shadow-md flex-shrink-0">
+        <div className="bg-secondary-500 rounded-2xl shadow-md flex-shrink-0 w-12 h-12 flex items-center justify-center">
           {/* musical note icon via emoji to avoid extra imports */}
-          <span className="w-6 h-6 text-white text-lg leading-none">♪</span>
+          <span className="text-white text-xl">♪</span>
         </div>
         <div className="flex-1">
           <h3 className="text-sm font-bold text-secondary-600 mb-2">Trecho do Dia</h3>
@@ -19,4 +19,3 @@ export default function DailyQuotePanel({ dailyQuote }) {
     </div>
   );
 }
-

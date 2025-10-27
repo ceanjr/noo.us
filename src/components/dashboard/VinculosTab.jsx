@@ -6,6 +6,25 @@ import { auth, db } from '../../lib/firebase';
 import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { showToast } from '../Toast';
 
+const RELATIONSHIP_LABELS = {
+  partner: 'Parceiro(a)',
+  family: 'Família',
+  friend: 'Amigo(a)',
+};
+
+const Avatar = ({ name, photoURL, avatarBg }) => (
+  <div
+    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg overflow-hidden"
+    style={{ backgroundColor: avatarBg || '#ccc' }}
+  >
+    {photoURL ? (
+      <img src={photoURL} alt={name} className="w-full h-full object-cover" />
+    ) : (
+      <span>{name?.[0] ?? '?'}</span>
+    )}
+  </div>
+);
+
 /**
  * VinculosTab - Gerenciamento de vínculos com parceiros (multi)
  *
@@ -18,12 +37,6 @@ import { showToast } from '../Toast';
 export default function VinculosTab({ profile, onLinkPartner, activePartnerId, onSetActiveLink }) {
   const { links } = useLinks();
   const [confirm, setConfirm] = useState({ open: false, link: null });
-
-  const Avatar = ({ name }) => (
-    <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold text-lg">
-      {name?.[0] ?? '?'}
-    </div>
-  );
 
   const handleUnlink = async (link) => {
     const uid = auth.currentUser?.uid;
@@ -65,38 +78,48 @@ export default function VinculosTab({ profile, onLinkPartner, activePartnerId, o
 
         {links && links.length > 0 ? (
           <div className="space-y-3">
-            {links.map((link) => (
-              <div key={link.id} className="flex items-center justify-between p-4 border border-border-color rounded-xl">
-                <div className="flex items-center gap-3">
-                  <Avatar name={link.partnerName} />
-                  <div>
-                    <div className="font-semibold text-theme-primary">{link.partnerName}</div>
-
+            {links.map((link) => {
+              const relationshipLabel = RELATIONSHIP_LABELS[link.relationship] || 'Parceiro(a)';
+              return (
+                <div key={link.id} className="flex items-center justify-between p-4 border border-border-color rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={link.partnerName} photoURL={link.partnerPhotoURL} avatarBg={link.partnerAvatarBg} />
+                    <div>
+                      <div className="font-semibold text-theme-primary">{link.partnerName}</div>
+                      <div className="text-xs font-medium text-theme-secondary mt-1">
+                        Relação:{' '}
+                        <span className="inline-block px-2 py-0.5 rounded-lg bg-primary-50 text-primary-600 border border-primary-100">
+                          {relationshipLabel}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {activePartnerId === link.partnerId ? (
+                      <span className="px-3 py-1 rounded-lg bg-primary-100 text-primary-700 text-xs font-semibold">
+                        Principal
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => onSetActiveLink && onSetActiveLink(link)}
+                        className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-xs font-semibold text-theme-secondary"
+                        title="Tornar principal"
+                      >
+                        Tornar principal
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setConfirm({ open: true, link })}
+                      className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition font-semibold text-theme-secondary flex items-center gap-2"
+                      title="Desvincular"
+                    >
+                      <X className="w-4 h-4" />
+                      Desvincular
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {activePartnerId === link.partnerId ? (
-                    <span className="px-3 py-1 rounded-lg bg-primary-100 text-primary-700 text-xs font-semibold">Principal</span>
-                  ) : (
-                    <button
-                      onClick={() => onSetActiveLink && onSetActiveLink(link)}
-                      className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-xs font-semibold text-theme-secondary"
-                      title="Tornar principal"
-                    >
-                      Tornar principal
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setConfirm({ open: true, link })}
-                    className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition font-semibold text-theme-secondary flex items-center gap-2"
-                    title="Desvincular"
-                  >
-                    <X className="w-4 h-4" />
-                    Desvincular
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">
@@ -137,4 +160,3 @@ export default function VinculosTab({ profile, onLinkPartner, activePartnerId, o
     </div>
   );
 }
-

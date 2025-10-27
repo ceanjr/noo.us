@@ -15,7 +15,7 @@ import NewSurprisesPanel from './NewSurprisesPanel';
  * HomeTab - Aba inicial do Dashboard
  *
  * @param {Object} props
- * @param {Object} props.profile - Perfil do usuÃ¡rio atual
+ * @param {Object} props.profile - Perfil do usuário atual
  * @param {Array} props.recentSurprises - Surpresas recentes
  * @param {Function} props.onLinkPartner - Callback para vincular parceiro
  * @param {Function} props.onCreateSurprise - Callback para criar surpresa
@@ -36,7 +36,7 @@ export default function HomeTab({
 }) {
   const [dailyQuote, setDailyQuote] = useState(null);
 
-  // Seleciona um trecho aleatÃ³rio por dia
+  // Seleciona um trecho aleatório por dia
   useEffect(() => {
     const today = new Date().toDateString();
     const savedDate = localStorage.getItem('dailyQuoteDate');
@@ -100,7 +100,14 @@ export default function HomeTab({
       {/* Trecho Musical do Dia */}
       <DailyQuotePanel dailyQuote={dailyQuote} />
 
-      {/* Painel de Novas Surpresas */}\n      <NewSurprisesPanel recentSurprises={recentSurprises} profile={profile} partnerAvatarBg={partnerAvatarBg} />\n\n{/* CTA Button */}
+      {/* Painel de Novas Surpresas */}
+      <NewSurprisesPanel
+        recentSurprises={recentSurprises}
+        profile={profile}
+        partnerAvatarBg={partnerAvatarBg}
+      />
+
+      {/* CTA Button */}
       {!hasPartner ? (
         <button
           onClick={onLinkPartner}
@@ -121,7 +128,6 @@ export default function HomeTab({
     </div>
   );
 }
-
 
 
 

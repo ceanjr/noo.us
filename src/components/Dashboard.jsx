@@ -17,6 +17,7 @@ import HomeTab from './dashboard/HomeTab';
 import SurprisesTab from './dashboard/SurprisesTab';
 import VinculosTab from './dashboard/VinculosTab';
 import { Home, Gift, Users } from 'lucide-react';
+import SurpriseDetailModal from './dashboard/SurpriseDetailModal';
 
 export default function Dashboard({ profile, onLogout, userId, setModal }) {
   // UI State
@@ -24,12 +25,31 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showLinkPartner, setShowLinkPartner] = useState(false);
   const [showNewSurprise, setShowNewSurprise] = useState(false);
-  const [viewMode, setViewMode] = useState('constellation');
   const [isPrivateMode, setIsPrivateMode] = useState(false);
   const [revealedSurprises, setRevealedSurprises] = useState(new Set());
+  const [selectedSurprise, setSelectedSurprise] = useState(null);
 
-  const handleRevealSurprise = (surpriseId) => {
-    setRevealedSurprises((prev) => new Set(prev).add(surpriseId));
+  const handleRevealSurprise = async (surpriseId) => {
+    setRevealedSurprises((prev) => {
+      const next = new Set(prev);
+      next.add(surpriseId);
+      return next;
+    });
+
+    try {
+      await updateDoc(doc(db, 'surprises', surpriseId), {
+        viewed: true,
+      });
+    } catch (error) {
+      console.error('Erro ao marcar surpresa como vista:', error);
+      showToast('Não foi possível marcar a surpresa como vista.', 'error');
+    }
+  };
+  const handleOpenSurpriseDetails = (moment) => {
+    setSelectedSurprise(moment);
+  };
+  const handleCloseSurpriseDetails = () => {
+    setSelectedSurprise(null);
   };
   
 
@@ -61,6 +81,18 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   // Custom Hooks
   const [modal, setModalLocal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
   const { surprises, notifications, partnerProfile, loading } = useDashboardData(userId);
+
+  useEffect(() => {
+    if (!surprises || surprises.length === 0) return;
+    const viewedIds = surprises.filter((s) => s.viewed).map((s) => s.id);
+    if (viewedIds.length === 0) return;
+
+    setRevealedSurprises((prev) => {
+      const next = new Set(prev);
+      viewedIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [surprises]);
 
   const {
     moments,
@@ -364,17 +396,16 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
             streak={streak}
             momentOfDay={momentOfDay}
             filteredMoments={filteredMoments}
-            viewMode={viewMode}
             isPrivateMode={isPrivateMode}
             hasPartner={!!activeLink}
             partnerName={activeLink?.partnerName}
             onPeriodChange={handlePeriodChange}
-            onViewModeChange={setViewMode}
             onPrivateModeToggle={() => setIsPrivateMode(!isPrivateMode)}
             onReact={handleReact}
             onCreateMoment={handleCreateMoment}
             revealedSurprises={revealedSurprises}
             onRevealSurprise={handleRevealSurprise}
+            onOpenSurprise={handleOpenSurpriseDetails}
           />
         )}
 
@@ -404,12 +435,14 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
           userId={userId}
         />
       )}
+
+      <SurpriseDetailModal
+        surprise={selectedSurprise}
+        onClose={handleCloseSurpriseDetails}
+      />
     </div>
   );
 }
-
-
-
 
 
 

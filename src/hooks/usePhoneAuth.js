@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { setupRecaptcha, sendPhoneVerificationCode, verifyPhoneCode } from '../services/authService';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import {
+  setupRecaptcha,
+  sendPhoneVerificationCode,
+  verifyPhoneCode,
+} from '../services/authService';
 
 /**
  * Custom hook para autenticação por telefone
@@ -10,6 +16,27 @@ export function usePhoneAuth() {
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [showVerificationStep, setShowVerificationStep] = useState(false);
+
+  // Limpa o estado do hook quando o usuário desloga
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        if (
+          window.recaptchaVerifier &&
+          typeof window.recaptchaVerifier.clear === 'function'
+        ) {
+          window.recaptchaVerifier.clear();
+          window.recaptchaVerifier = null;
+        }
+        setRecaptchaVerifier(null);
+        setConfirmationResult(null);
+        setShowVerificationStep(false);
+        setVerificationCode('');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Setup reCAPTCHA quando step/authMethod mudar
   useEffect(() => {
@@ -32,12 +59,9 @@ export function usePhoneAuth() {
    */
   const sendVerification = async (phoneNumber) => {
     try {
-      // Setup ou reusar recaptcha
-      let verifier = recaptchaVerifier;
-      if (!verifier) {
-        verifier = setupRecaptcha();
-        setRecaptchaVerifier(verifier);
-      }
+      // Garante que um novo verifier seja criado se necessário
+      const verifier = setupRecaptcha();
+      setRecaptchaVerifier(verifier);
 
       const result = await sendPhoneVerificationCode(phoneNumber, verifier);
       setConfirmationResult(result);

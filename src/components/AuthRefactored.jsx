@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import {
   setPersistence,
@@ -465,4 +465,3 @@ export default function Auth() {
     </div>
   );
 }
-

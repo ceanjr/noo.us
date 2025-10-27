@@ -1,4 +1,4 @@
-﻿import { Inbox, Users, Calendar, Check, X } from 'lucide-react';
+import { Inbox, Users, Calendar, Check, X } from 'lucide-react';
 
 /**
  * InboxTab - Aba de caixa de entrada do Dashboard
@@ -169,9 +169,3 @@ export default function InboxTab({
     </div>
   );
 }
-
-
-
-
-
-

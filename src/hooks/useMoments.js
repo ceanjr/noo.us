@@ -29,6 +29,16 @@ export function useMoments(surprises) {
         ? surprise.senderName.length % 4
         : 0;
 
+      const authorPhotoURL =
+        surprise.senderPhotoURL ||
+        surprise.senderPhoto ||
+        surprise.photoURL ||
+        '';
+      const authorAvatarBg =
+        surprise.senderAvatarBg ||
+        surprise.avatarBg ||
+        '';
+
       return {
         id: surprise.id,
         type: surprise.type,
@@ -36,12 +46,16 @@ export function useMoments(surprises) {
         content: surprise.content,
         author: surprise.senderName || 'Anônimo',
         authorColor: authorColors[colorIndex],
+        authorPhotoURL,
+        authorAvatarBg,
         date: createdDate.toLocaleDateString('pt-BR'),
         reactions: surprise.reactions || [],
         isPrivate: surprise.isPrivate || false,
         size,
         createdAt: surprise.createdAt,
         daysAgo: diffDays,
+        subtitle: surprise.subtitle || '',
+        original: surprise,
       };
     });
 

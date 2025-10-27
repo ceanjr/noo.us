@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Send, Link as LinkIcon, Sparkles } from 'lucide-react';
+import { X, Send, Link as LinkIcon, Sparkles, ChevronDown } from 'lucide-react';
 
 /**
  * LinkPartnerModal - Modal para vincular parceiro
@@ -8,14 +8,22 @@ import { X, Send, Link as LinkIcon, Sparkles } from 'lucide-react';
  * @param {Function} props.onClose - Callback ao fechar modal
  * @param {Function} props.onSubmit - Callback ao enviar (identifier)
  */
+const RELATIONSHIP_OPTIONS = [
+  { value: 'partner', label: 'Parceiro(a)' },
+  { value: 'family', label: 'Família' },
+  { value: 'friend', label: 'Amigo(a)' },
+];
+
 export default function LinkPartnerModal({ onClose, onSubmit }) {
   const [partnerIdentifier, setPartnerIdentifier] = useState('');
+  const [relationship, setRelationship] = useState('partner');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = await onSubmit(partnerIdentifier);
+    const success = await onSubmit(partnerIdentifier, relationship);
     if (success) {
       setPartnerIdentifier('');
+      setRelationship('partner');
       onClose();
     }
   };
@@ -43,7 +51,7 @@ export default function LinkPartnerModal({ onClose, onSubmit }) {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-bold text-theme-secondary mb-2">
-              Email ou Telefone do(a) Parceiro(a)
+              Email ou Telefone
             </label>
             <input
               type="text"
@@ -54,12 +62,32 @@ export default function LinkPartnerModal({ onClose, onSubmit }) {
               required
             />
           </div>
+          <div>
+            <label className="block text-sm font-bold text-theme-secondary mb-2">
+              Qual a relação com essa pessoa?
+            </label>
+            <div className="relative">
+              <select
+                value={relationship}
+                onChange={(e) => setRelationship(e.target.value)}
+                className="w-full appearance-none px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white text-theme-primary"
+                required
+              >
+                {RELATIONSHIP_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-secondary" />
+            </div>
+          </div>
 
           <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
             <div className="flex items-start gap-2">
               <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-theme-secondary">
-                Seu parceiro receberá um convite para se conectar a você.
+                Essa pessoa receberá um convite para se conectar a você.
               </p>
             </div>
           </div>

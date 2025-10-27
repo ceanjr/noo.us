@@ -18,7 +18,7 @@ export const setProfileUpdater = (fn) => {
 };
 
 export function usePartnerActions(userId, profile, setModal, setProfile) {
-  const handleSendLinkInvite = async (partnerIdentifier) => {
+  const handleSendLinkInvite = async (partnerIdentifier, relationshipType = 'partner') => {
     try {
       const usersRef = collection(db, 'users');
       let q;
@@ -26,10 +26,8 @@ export function usePartnerActions(userId, profile, setModal, setProfile) {
       if (partnerIdentifier.includes('@')) {
         q = query(usersRef, where('email', '==', partnerIdentifier));
       } else {
-        const formattedPhone = partnerIdentifier.startsWith('+')
-          ? partnerIdentifier
-          : `+55${partnerIdentifier.replace(/\D/g, '')}`;
-        q = query(usersRef, where('phoneNumber', '==', formattedPhone));
+        const cleanedPhone = partnerIdentifier.replace(/\D/g, '');
+        q = query(usersRef, where('phoneNumber', '==', cleanedPhone));
       }
 
       const querySnapshot = await getDocs(q);
@@ -72,6 +70,8 @@ export function usePartnerActions(userId, profile, setModal, setProfile) {
         return false;
       }
 
+      const relationship = relationshipType || 'partner';
+
       const notificationData = {
         type: 'link_invite',
         senderId: userId,
@@ -80,6 +80,7 @@ export function usePartnerActions(userId, profile, setModal, setProfile) {
         senderAvatarBg: profile.avatarBg || '',
         recipientId: partnerId,
         recipientName: partnerData.name,
+        relationship,
         status: 'pending',
         createdAt: new Date().toISOString(),
       };
@@ -102,7 +103,7 @@ export function usePartnerActions(userId, profile, setModal, setProfile) {
       setModal({
         isOpen: true,
         title: 'Desvincular contas?',
-        message: `Tem certeza que deseja desvincular sua conta de ${profile.partnerName}? Todas as surpresas serao mantidas, mas voces nao estarao mais vinculados.`,
+        message: `Tem certeza que deseja desvincular sua conta de ${profile.partnerName}? Todas as surpresas serão mantidas, mas vocês não estarão mais vinculados.`,
         type: 'warning',
         showCancel: true,
         confirmText: 'Desvincular',

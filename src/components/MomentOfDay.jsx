@@ -3,6 +3,15 @@ import { Sparkles, Clock } from 'lucide-react';
 export default function MomentOfDay({ moment }) {
   if (!moment) return null;
 
+  const authorInitial = (moment.author || '?').charAt(0).toUpperCase();
+  const authorImage = moment.authorPhotoURL || '';
+  const hasAuthorPhoto = Boolean(authorImage) && !authorImage.includes('/images/icons/');
+  const hasAuthorIcon = Boolean(authorImage) && authorImage.includes('/images/icons/');
+  const avatarBgStyle =
+    !hasAuthorPhoto && moment.authorAvatarBg
+      ? { backgroundColor: moment.authorAvatarBg }
+      : undefined;
+
   return (
     <div className="bg-gradient-to-r from-primary-500 via-secondary-400 to-accent-500 rounded-2xl p-[2px] shadow-lg animate-slide-down">
       <div className="bg-theme-main rounded-2xl p-6">
@@ -23,8 +32,39 @@ export default function MomentOfDay({ moment }) {
 
         <div className="bg-theme-secondary rounded-xl p-4 border border-border-color">
           <div className="flex items-start gap-3">
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${moment.authorColor} flex items-center justify-center flex-shrink-0`}>
-              <span className="text-white text-xl font-bold">{moment.author[0]}</span>
+            <div
+              className={[
+                'w-12',
+                'h-12',
+                'rounded-xl',
+                'flex',
+                'items-center',
+                'justify-center',
+                'flex-shrink-0',
+                'shadow-md',
+                hasAuthorPhoto ? 'overflow-hidden' : 'text-white text-xl font-bold',
+                !hasAuthorPhoto && !moment.authorAvatarBg ? `bg-gradient-to-r ${moment.authorColor}` : '',
+                !hasAuthorPhoto && hasAuthorIcon ? 'p-2' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              style={avatarBgStyle}
+            >
+              {hasAuthorPhoto ? (
+                <img
+                  src={authorImage}
+                  alt={moment.author}
+                  className="w-full h-full object-cover"
+                />
+              ) : hasAuthorIcon ? (
+                <img
+                  src={authorImage}
+                  alt={moment.author}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                authorInitial
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="font-semibold text-theme-primary mb-1">{moment.title}</h4>

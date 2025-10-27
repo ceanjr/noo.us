@@ -27,10 +27,11 @@ export default function ConstellationView({
   isPrivateMode,
   revealedSurprises,
   onRevealSurprise,
+  onOpenSurprise,
 }) {
   const [positionedMoments, setPositionedMoments] = useState([]);
 
-  // Gerar posiÃ§Ãµes orgÃ¢nicas para os cards
+  // Gerar posições orgânicas para os cards
   useEffect(() => {
     if (!moments || moments.length === 0) return;
 
@@ -86,7 +87,7 @@ export default function ConstellationView({
     setPositionedMoments(positioned);
   }, [moments]);
 
-  // Calcular conexÃµes entre cards prÃ³ximos
+  // Calcular conexões entre cards próximos
   const connections = [];
   const connectionDistance = 250;
 
@@ -167,11 +168,11 @@ export default function ConstellationView({
             size={moment.size || "medium"}
             isRevealed={revealedSurprises.has(moment.id)}
             onReveal={() => onRevealSurprise(moment.id)}
+            onOpen={() => onOpenSurprise?.(moment)}
           />
         </div>
       ))}
     </div>
   );
 }
-
 

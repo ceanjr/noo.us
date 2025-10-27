@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { db, auth } from "../lib/firebase";
 import { updateDoc, doc } from "firebase/firestore";
 import {
@@ -16,13 +16,10 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  CheckCircle,
   Mail,
   Phone,
-  Palette,
 } from "lucide-react";
 import CryptoJS from "crypto-js";
-import { useTheme } from "../contexts/ThemeContext";
 import { uploadProfilePhoto, validateImageFile } from "../lib/storage";
 
 const SALT_KEY = "noo_us_secure_v1";
@@ -30,7 +27,7 @@ const SALT_KEY = "noo_us_secure_v1";
 export default function ProfileSettings({ profile, userId, onClose }) {
   const [activeSection, setActiveSection] = useState("profile");
   const [loading, setLoading] = useState(false);
-  const { currentTheme, changeTheme, themes } = useTheme();
+  const isPhoneAuth = profile.authMethod === "phone";
 
   // Profile data
   const [name, setName] = useState(profile.name || "");
@@ -49,6 +46,12 @@ export default function ProfileSettings({ profile, userId, onClose }) {
   const hashPassword = (password) => {
     return CryptoJS.SHA256(password + SALT_KEY).toString();
   };
+
+  useEffect(() => {
+    if (isPhoneAuth && activeSection === "password") {
+      setActiveSection("profile");
+    }
+  }, [isPhoneAuth, activeSection]);
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
@@ -154,8 +157,7 @@ export default function ProfileSettings({ profile, userId, onClose }) {
 
   const sections = [
     { id: "profile", label: "Perfil", icon: User },
-    { id: "password", label: "Senha", icon: Lock },
-    { id: "theme", label: "Tema", icon: Palette },
+    { id: "password", label: "Senha", icon: Lock, disabled: isPhoneAuth },
   ];
 
   return (
@@ -185,9 +187,16 @@ export default function ProfileSettings({ profile, userId, onClose }) {
               return (
                 <button
                   key={section.id}
-                  onClick={() => setActiveSection(section.id)}
+                  onClick={() => {
+                    if (!section.disabled) {
+                      setActiveSection(section.id);
+                    }
+                  }}
+                  disabled={section.disabled}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
-                    activeSection === section.id
+                    section.disabled
+                      ? "bg-theme-secondary/20 text-white/60 cursor-not-allowed opacity-60"
+                      : activeSection === section.id
                       ? "bg-theme-secondary text-primary-600 shadow-lg"
                       : "bg-theme-secondary/20 text-white hover:bg-theme-secondary/30"
                   }`}
@@ -312,7 +321,22 @@ export default function ProfileSettings({ profile, userId, onClose }) {
           )}
 
           {/* Password Section */}
-          {activeSection === "password" && (
+          {activeSection === "password" && isPhoneAuth && (
+            <div className="space-y-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 p-6 rounded-2xl text-center">
+              <div className="flex justify-center">
+                <AlertCircle className="w-8 h-8 text-blue-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-theme-primary">
+                Senha indisponível
+              </h3>
+              <p className="text-sm text-theme-secondary">
+                Contas autenticadas por telefone usam códigos SMS para login.
+                Não é necessário definir uma senha.
+              </p>
+            </div>
+          )}
+
+          {activeSection === "password" && !isPhoneAuth && (
             <form onSubmit={handleChangePassword} className="space-y-6">
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 p-4 rounded-xl">
                 <div className="flex items-start gap-3">
@@ -428,90 +452,6 @@ export default function ProfileSettings({ profile, userId, onClose }) {
             </form>
           )}
 
-          {/* Theme Section */}
-          {activeSection === "theme" && (
-            <div className="space-y-6">
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-theme-primary mb-2">
-                  Aparência
-                </h3>
-                <p className="text-sm text-theme-secondary">
-                  Escolha entre o modo claro ou escuro
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(themes).map(([themeId, theme]) => {
-                  const isActive = currentTheme === themeId;
-                  return (
-                    <button
-                      key={themeId}
-                      onClick={() => {
-                        changeTheme(themeId);
-                        showToast(
-                          `${theme.name} ativado! ${theme.icon}`,
-                          "success"
-                        );
-                      }}
-                      className={`relative p-6 rounded-2xl border-2 transition-all duration-300 ${
-                        isActive
-                          ? "border-primary-500 bg-gradient-to-br from-primary-50 to-secondary-50 shadow-lg scale-105"
-                          : "border-theme bg-theme-secondary hover:border-primary-300 hover:shadow-md"
-                      }`}
-                    >
-                      {isActive && (
-                        <div className="absolute top-3 right-3">
-                          <CheckCircle className="w-5 h-5 text-primary-600" />
-                        </div>
-                      )}
-
-                      <div className="text-center">
-                        <div className="text-5xl mb-3">{theme.icon}</div>
-                        <h3 className="font-bold text-theme-primary mb-1">
-                          {theme.name}
-                        </h3>
-                        <p className="text-xs text-theme-secondary">
-                          {theme.description}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2 mt-4 justify-center">
-                        <div
-                          className="w-6 h-6 rounded-full shadow-sm border-2 border-theme-secondary"
-                          style={{ backgroundColor: theme.primary[500] }}
-                        />
-                        <div
-                          className="w-6 h-6 rounded-full shadow-sm border-2 border-theme-secondary"
-                          style={{ backgroundColor: theme.secondary[500] }}
-                        />
-                        <div
-                          className="w-6 h-6 rounded-full shadow-sm border-2 border-theme-secondary"
-                          style={{ backgroundColor: theme.accent[500] }}
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 p-4 rounded-xl mt-6">
-                <div className="flex items-start gap-3">
-                  <div className="bg-blue-500 p-1.5 rounded-lg flex-shrink-0">
-                    <AlertCircle className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-theme-primary mb-1">
-                      Sincronização Automática
-                    </p>
-                    <p className="text-sm font-medium text-theme-secondary">
-                      Sua preferência será salva e sincronizada em todos os seus
-                      dispositivos.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

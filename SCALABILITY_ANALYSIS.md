@@ -495,4 +495,3 @@ PlanetScale + Pusher
 
 **Última atualização:** Janeiro 2025
 **Próxima revisão:** Quando atingir 5K usuários ativos ou 6 meses
-
