@@ -13,7 +13,6 @@ import {
   signInWithPopup,
 } from 'firebase/auth';
 import { showToast } from '../components/Toast';
-import { hashPassword } from '../utils/crypto';
 import {
   createUserProfile,
   updateLastLogin,
@@ -227,7 +226,6 @@ export const emailSignup = async ({
       name,
       email,
       phoneNumber: '',
-      passwordHash: hashPassword(password),
       authMethod: 'email',
       gender,
       photoURL: avatar.icon,
@@ -325,48 +323,19 @@ export const phoneSignup = async ({
 };
 
 /**
- * Login com telefone e senha
+ * Login com telefone (via SMS)
+ * NOTA: Login por telefone agora usa apenas SMS verification
+ * Firebase Auth gerencia a autenticação de forma segura
  * @param {string} phoneNumber - Telefone (apenas dígitos)
- * @param {string} password - Senha
- * @returns {Promise<Object>} Firebase user
+ * @returns {Promise<Object>} Objeto indicando que precisa verificação
  */
-export const phoneLogin = async (phoneNumber, password) => {
-  try {
-    const { findUserByPhone } = await import('./userService');
-    const { verifyPassword } = await import('../utils/crypto');
-
-    // Buscar usuário pelo telefone
-    const userResult = await findUserByPhone(phoneNumber);
-    if (!userResult) {
-      showToast('Telefone não cadastrado', 'error');
-      throw new Error('Telefone não cadastrado');
-    }
-
-    // Verificar senha
-    const isPasswordValid = verifyPassword(password, userResult.data.passwordHash);
-    if (!isPasswordValid) {
-      showToast('Senha incorreta', 'error');
-      throw new Error('Senha incorreta');
-    }
-
-    // Login com Firebase usando o mesmo telefone (trigger SMS)
-    // Isso sincroniza o estado do Firebase Auth
-    showToast('Enviando código de verificação...', 'info');
-
-    // Retornar os dados do usuário para continuar o fluxo
-    return {
-      needsPhoneVerification: true,
-      phoneNumber,
-      userId: userResult.id,
-      userData: userResult.data,
-    };
-  } catch (error) {
-    console.error('Erro no login por telefone:', error);
-    if (!error.message.includes('Telefone não cadastrado') && !error.message.includes('Senha incorreta')) {
-      showToast('Erro ao fazer login', 'error');
-    }
-    throw error;
-  }
+export const phoneLogin = async (phoneNumber) => {
+  // Phone login agora apenas redireciona para verificação SMS
+  // O Firebase Auth gerencia a autenticação de forma segura
+  return {
+    needsPhoneVerification: true,
+    phoneNumber,
+  };
 };
 
 /**

@@ -19,10 +19,7 @@ import {
   Mail,
   Phone,
 } from "lucide-react";
-import CryptoJS from "crypto-js";
 import { uploadProfilePhoto, validateImageFile } from "../lib/storage";
-
-const SALT_KEY = "noo_us_secure_v1";
 
 export default function ProfileSettings({ profile, userId, onClose }) {
   const [activeSection, setActiveSection] = useState("profile");
@@ -42,10 +39,6 @@ export default function ProfileSettings({ profile, userId, onClose }) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const hashPassword = (password) => {
-    return CryptoJS.SHA256(password + SALT_KEY).toString();
-  };
 
   useEffect(() => {
     if (isPhoneAuth && activeSection === "password") {
@@ -135,9 +128,8 @@ export default function ProfileSettings({ profile, userId, onClose }) {
         await updatePassword(user, newPassword);
       }
 
-      await updateDoc(doc(db, "users", userId), {
-        passwordHash: hashPassword(newPassword),
-      });
+      // Firebase Auth já gerencia o hash da senha de forma segura
+      // Não é necessário armazenar passwordHash no Firestore
 
       showToast("Senha alterada com sucesso! 🔒", "success");
       setCurrentPassword("");
