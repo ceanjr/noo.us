@@ -1,4 +1,5 @@
 import { X, Music, Image as ImageIcon, MessageCircle } from 'lucide-react';
+import Avatar from '../Avatar';
 
 const TYPE_LABEL = {
   music: 'Música',
@@ -32,9 +33,7 @@ export default function SurpriseDetailModal({ surprise, onClose }) {
   const senderName = original?.senderName || author;
   const senderPhoto = original?.senderPhotoURL || original?.senderPhoto || null;
   const senderAvatarBg = original?.senderAvatarBg || original?.avatarBg || null;
-  const hasSolidBg =
-    typeof senderAvatarBg === 'string' && senderAvatarBg.trim().startsWith('#');
-  const avatarFallbackClass = senderPhoto || hasSolidBg
+  const avatarFallbackClass = senderPhoto || senderAvatarBg
     ? ''
     : `bg-gradient-to-r ${authorColor || 'from-primary-500 to-secondary-500'}`;
 
@@ -113,22 +112,13 @@ export default function SurpriseDetailModal({ surprise, onClose }) {
         <div className="p-6 sm:p-8 space-y-6">
           {/* Header */}
           <div className="flex items-start gap-4">
-            <div
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0 ${avatarFallbackClass}`}
-              style={hasSolidBg ? { backgroundColor: senderAvatarBg } : undefined}
-            >
-              {senderPhoto ? (
-                <img
-                  src={senderPhoto}
-                  alt={senderName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-white text-xl font-bold">
-                  {senderName?.[0] || '??'}
-                </span>
-              )}
-            </div>
+            <Avatar
+              photoURL={senderPhoto}
+              name={senderName}
+              avatarBg={senderAvatarBg}
+              size="lg"
+              className={`w-14 h-14 ${avatarFallbackClass}`}
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary-600">
                 <Icon className="w-4 h-4" />

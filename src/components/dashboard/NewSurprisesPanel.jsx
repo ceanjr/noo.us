@@ -1,3 +1,5 @@
+import Avatar from '../Avatar';
+
 export default function NewSurprisesPanel({
   recentSurprises = [],
   profile,
@@ -16,29 +18,21 @@ export default function NewSurprisesPanel({
     ? sender.senderPhotoURL || sender.senderPhoto || sender.photoURL
     : "";
   const name = sender ? sender.senderName || "" : "";
-  const bg = sender ? sender.senderAvatarBg || sender.avatarBg || "" : "";
-  const isIcon = photo && photo.includes("/images/icons/");
+  const bg = sender ? sender.senderAvatarBg || sender.avatarBg || partnerAvatarBg || profile?.avatarBg : "";
 
   return (
     <div className="bg-theme-secondary rounded-2xl border border-border-color shadow-sm p-4 sm:p-5">
       {total > 0 ? (
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
-            <div
-              className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center ring-2 ring-white"
-              style={{
-                backgroundColor:
-                  bg || partnerAvatarBg || profile?.avatarBg || undefined,
-              }}
-            >
-              <img
-                src={photo || "/images/icons/neutral.png"}
-                alt={name || "Remetente"}
-                className={`w-10 h-12 ${
-                  isIcon ? "object-contain p-0.5" : "object-cover"
-                }`}
-              />
-            </div>
+            <Avatar
+              photoURL={photo || "/images/icons/neutral.png"}
+              name={name}
+              avatarBg={bg}
+              size="lg"
+              ring={true}
+              className="w-14 h-14"
+            />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-theme-primary mb-1">

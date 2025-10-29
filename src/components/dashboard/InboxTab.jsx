@@ -1,4 +1,5 @@
 import { Inbox, Users, Calendar, Check, X } from 'lucide-react';
+import Avatar from '../Avatar';
 
 /**
  * InboxTab - Aba de caixa de entrada do Dashboard
@@ -17,24 +18,6 @@ export default function InboxTab({
   onRespondToProposal,
   onDateChangeResponse,
 }) {
-  const getAvatar = (n) => {
-    const photo = n.senderPhotoURL || n.senderPhoto || n.photoURL || '';
-    const bg = n.senderAvatarBg || n.avatarBg || '';
-    const isIcon = photo && photo.includes('/images/icons/');
-    const FallbackIcon = n.type === 'link_invite' ? Users : Calendar;
-    if (photo) {
-      return (
-        <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-white" style={{ backgroundColor: bg || undefined }}>
-          <img src={photo} alt={n.senderName || 'Remetente'} className={`w-full h-full ${isIcon ? 'object-contain p-1' : 'object-cover'}`} />
-        </div>
-      );
-    }
-    return (
-      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center ring-2 ring-white">
-        <FallbackIcon className="w-6 h-6 text-gray-500" />
-      </div>
-    );
-  };
   return (
     <div className="space-y-4">
       <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
@@ -61,7 +44,13 @@ export default function InboxTab({
                 <div>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex-shrink-0">
-                      {getAvatar(notification)}
+                      <Avatar
+                        photoURL={notification.senderPhotoURL || notification.senderPhoto || notification.photoURL}
+                        name={notification.senderName}
+                        avatarBg={notification.senderAvatarBg || notification.avatarBg}
+                        ring={true}
+                        fallbackIcon={<Users className="w-6 h-6 text-gray-500" />}
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-base text-theme-primary mb-0.5">
@@ -96,7 +85,13 @@ export default function InboxTab({
                 <div>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex-shrink-0">
-                      {getAvatar(notification)}
+                      <Avatar
+                        photoURL={notification.senderPhotoURL || notification.senderPhoto || notification.photoURL}
+                        name={notification.senderName}
+                        avatarBg={notification.senderAvatarBg || notification.avatarBg}
+                        ring={true}
+                        fallbackIcon={<Calendar className="w-6 h-6 text-gray-500" />}
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-base text-theme-primary mb-0.5">
@@ -132,7 +127,13 @@ export default function InboxTab({
                 <div>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex-shrink-0">
-                      {getAvatar(notification)}
+                      <Avatar
+                        photoURL={notification.senderPhotoURL || notification.senderPhoto || notification.photoURL}
+                        name={notification.senderName}
+                        avatarBg={notification.senderAvatarBg || notification.avatarBg}
+                        ring={true}
+                        fallbackIcon={<Calendar className="w-6 h-6 text-gray-500" />}
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-base text-theme-primary mb-0.5">

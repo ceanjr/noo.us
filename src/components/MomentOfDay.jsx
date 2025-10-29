@@ -36,7 +36,7 @@ export default function MomentOfDay({ moment }) {
               className={[
                 'w-12',
                 'h-12',
-                'rounded-xl',
+                'rounded-full',
                 'flex',
                 'items-center',
                 'justify-center',
@@ -44,11 +44,11 @@ export default function MomentOfDay({ moment }) {
                 'shadow-md',
                 hasAuthorPhoto ? 'overflow-hidden' : 'text-white text-xl font-bold',
                 !hasAuthorPhoto && !moment.authorAvatarBg ? `bg-gradient-to-r ${moment.authorColor}` : '',
-                !hasAuthorPhoto && hasAuthorIcon ? 'p-2' : '',
+                hasAuthorIcon ? 'p-2' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
-              style={avatarBgStyle}
+              style={hasAuthorPhoto && !hasAuthorIcon ? undefined : avatarBgStyle}
             >
               {hasAuthorPhoto ? (
                 <img

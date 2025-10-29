@@ -7,6 +7,7 @@ import LoadingSpinner from './LoadingSpinner';
 import DashboardHeader from './dashboard/DashboardHeader';
 import BottomNavigation from './dashboard/BottomNavigation';
 import LinkPartnerModal from './dashboard/LinkPartnerModal';
+import SelectRecipientModal from './dashboard/SelectRecipientModal';
 import CreateSurpriseModal from './dashboard/CreateSurpriseModal';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useMoments } from '../hooks/useMoments';
@@ -27,7 +28,9 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   const [activeTab, setActiveTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [showLinkPartner, setShowLinkPartner] = useState(false);
+  const [showSelectRecipient, setShowSelectRecipient] = useState(false);
   const [showNewSurprise, setShowNewSurprise] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState(null);
   const [isPrivateMode, setIsPrivateMode] = useState(false);
   const [revealedSurprises, setRevealedSurprises] = useState(new Set());
   const [selectedSurprise, setSelectedSurprise] = useState(null);
@@ -85,7 +88,10 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
   // Custom Hooks
   const [modal, setModalLocal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
-  const { surprises, notifications, partnerProfile, loading } = useDashboardData(userId);
+  const { surprises, notifications, partnerProfile, loading } = useDashboardData(
+    userId,
+    activeLink?.partnerId
+  );
 
   useEffect(() => {
     if (!surprises || surprises.length === 0) return;
@@ -229,19 +235,21 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
 
   // Handlers memoizados
   const handleCreateSurprise = useCallback(async (newSurprise) => {
-    if (!activeLink) {
-      showToast('Vincule-se a alguém e selecione um vínculo principal!', 'error');
+    const recipient = selectedRecipient || activeLink;
+    
+    if (!recipient) {
+      showToast('Selecione um destinatário para a surpresa!', 'error');
       return;
     }
 
     try {
-      await addDoc(collection(db, 'surprises'), {
+      const surpriseDoc = await addDoc(collection(db, 'surprises'), {
         senderId: userId,
         senderName: profile.name,
         senderPhotoURL: profile.photoURL || '',
         senderAvatarBg: profile.avatarBg || '',
-        recipientId: activeLink.partnerId,
-        recipientName: activeLink.partnerName,
+        recipientId: recipient.partnerId,
+        recipientName: recipient.partnerName,
         type: newSurprise.type,
         title: newSurprise.title,
         content: newSurprise.content,
@@ -249,11 +257,28 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         viewed: false,
       });
 
+      // Criar notificação para o destinatário
+      await addDoc(collection(db, 'notifications'), {
+        userId: recipient.partnerId,
+        type: 'new_surprise',
+        title: `Nova surpresa de ${profile.name}!`,
+        message: `Você recebeu uma nova ${newSurprise.type === 'message' ? 'mensagem' : newSurprise.type === 'photo' ? 'foto' : newSurprise.type === 'music' ? 'música' : 'surpresa'}!`,
+        senderName: profile.name,
+        senderPhotoURL: profile.photoURL || '',
+        senderAvatarBg: profile.avatarBg || '',
+        surpriseId: surpriseDoc.id,
+        status: 'pending',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+
       showToast('Surpresa criada com sucesso!', 'success');
+      handleCloseSurpriseModal();
     } catch (error) {
+      console.error('Erro ao criar surpresa:', error);
       showToast('Erro ao criar surpresa', 'error');
     }
-  }, [activeLink, userId, profile.name, profile.photoURL, profile.avatarBg]);
+  }, [selectedRecipient, activeLink, userId, profile.name, profile.photoURL, profile.avatarBg]);
 
   const handleDeleteSurprise = async (surpriseId) => {
     setModalLocal({
@@ -275,7 +300,29 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
   };
 
   const handleCreateMoment = (type) => {
+    // Abre modal de seleção de destinatário
+    if (links.length === 0) {
+      showToast('Vincule-se a alguém primeiro para enviar surpresas!', 'error');
+      setShowLinkPartner(true);
+      return;
+    }
+    setShowSelectRecipient(true);
+  };
+
+  const handleSelectRecipient = (link) => {
+    setSelectedRecipient(link);
+    setShowSelectRecipient(false);
     setShowNewSurprise(true);
+  };
+
+  const handleCloseSelectRecipient = () => {
+    setShowSelectRecipient(false);
+    setSelectedRecipient(null);
+  };
+
+  const handleCloseSurpriseModal = () => {
+    setShowNewSurprise(false);
+    setSelectedRecipient(null);
   };
 
   const handleReact = async (momentId, emoji) => {
@@ -382,7 +429,7 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
               new Date(b.createdAt) - new Date(a.createdAt)
             )}
             onLinkPartner={() => setShowLinkPartner(true)}
-            onCreateSurprise={() => setShowNewSurprise(true)}
+            onCreateSurprise={() => setShowSelectRecipient(true)}
             hasPartner={!!activeLink}
             partnerName={activeLink?.partnerName || ''}
             partnerAvatarBg={partnerProfile?.avatarBg || ''}
@@ -441,11 +488,20 @@ export default function Dashboard({ profile, onLogout, userId, setModal }) {
         />
       )}
 
+      {showSelectRecipient && (
+        <SelectRecipientModal
+          onClose={handleCloseSelectRecipient}
+          onSelectRecipient={handleSelectRecipient}
+          links={links}
+        />
+      )}
+
       {showNewSurprise && (
         <CreateSurpriseModal
-          onClose={() => setShowNewSurprise(false)}
+          onClose={handleCloseSurpriseModal}
           onSubmit={handleCreateSurprise}
           userId={userId}
+          recipientName={selectedRecipient?.partnerName}
         />
       )}
 

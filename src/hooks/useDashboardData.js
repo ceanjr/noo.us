@@ -6,7 +6,6 @@ import {
   where,
   onSnapshot,
   doc,
-  getDoc,
   orderBy,
   limit,
 } from 'firebase/firestore';
@@ -15,29 +14,36 @@ import { showToast } from '../components/Toast';
 export function useDashboardData(userId, partnerId) {
   const [surprises, setSurprises] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [dateConflict, setDateConflict] = useState(null);
   const [partnerProfile, setPartnerProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Carregar perfil do parceiro
+  // Observador em tempo real para o perfil do parceiro
   useEffect(() => {
-    const loadPartnerProfile = async () => {
-      if (partnerId) {
-        try {
-          const partnerDoc = await getDoc(doc(db, 'users', partnerId));
-          if (partnerDoc.exists()) {
-            setPartnerProfile(partnerDoc.data());
-          }
-        } catch (error) {
-          showToast('Erro ao carregar perfil do parceiro', 'error');
-        }
-      }
-    };
+    if (!partnerId) {
+      setPartnerProfile(null);
+      return;
+    }
 
-    loadPartnerProfile();
+    const partnerDocRef = doc(db, 'users', partnerId);
+    const unsubscribe = onSnapshot(
+      partnerDocRef,
+      (doc) => {
+        if (doc.exists()) {
+          setPartnerProfile(doc.data());
+        } else {
+          setPartnerProfile(null);
+        }
+      },
+      (error) => {
+        console.error("Erro ao observar perfil do parceiro:", error);
+        showToast('Erro ao carregar perfil do parceiro.', 'error');
+      }
+    );
+
+    return () => unsubscribe();
   }, [partnerId]);
 
-  // Carregar surpresas (com paginação e ordenação)
+  // Observador para surpresas
   useEffect(() => {
     if (!userId) return;
 
@@ -45,7 +51,7 @@ export function useDashboardData(userId, partnerId) {
       collection(db, 'surprises'),
       where('recipientId', '==', userId),
       orderBy('createdAt', 'desc'),
-      limit(100) // Limitar a 100 surpresas mais recentes
+      limit(100)
     );
 
     const unsubscribe = onSnapshot(
@@ -60,7 +66,7 @@ export function useDashboardData(userId, partnerId) {
       },
       (error) => {
         console.error('Erro ao carregar surpresas:', error);
-        showToast('Erro ao carregar surpresas', 'error');
+        showToast('Erro ao carregar surpresas.', 'error');
         setLoading(false);
       }
     );
@@ -68,7 +74,7 @@ export function useDashboardData(userId, partnerId) {
     return () => unsubscribe();
   }, [userId]);
 
-  // Carregar notificações (com paginação e ordenação)
+  // Observador para notificações
   useEffect(() => {
     if (!userId) return;
 
@@ -76,70 +82,30 @@ export function useDashboardData(userId, partnerId) {
       collection(db, 'notifications'),
       where('recipientId', '==', userId),
       orderBy('createdAt', 'desc'),
-      limit(50) // Limitar a 50 notificações mais recentes
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const notificationsData = snapshot.docs.map((doc) => {
-          return { id: doc.id, ...doc.data() };
-        });
+        const notificationsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
         setNotifications(notificationsData);
       },
       (error) => {
         console.error('Erro ao carregar notificações:', error);
-        showToast('Erro ao carregar notificações: ' + error.message, 'error');
+        showToast('Erro ao carregar notificações.', 'error');
       }
     );
 
     return () => unsubscribe();
   }, [userId]);
 
-  // Carregar conflito de data
-  useEffect(() => {
-    if (!userId || !partnerId) return;
-
-    const q = query(
-      collection(db, 'dateConflicts'),
-      where('user1Id', '==', userId)
-    );
-
-    const q2 = query(
-      collection(db, 'dateConflicts'),
-      where('user2Id', '==', userId)
-    );
-
-    const unsubscribe1 = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        setDateConflict({
-          id: snapshot.docs[0].id,
-          ...snapshot.docs[0].data(),
-        });
-      }
-    });
-
-    const unsubscribe2 = onSnapshot(q2, (snapshot) => {
-      if (!snapshot.empty) {
-        setDateConflict({
-          id: snapshot.docs[0].id,
-          ...snapshot.docs[0].data(),
-        });
-      }
-    });
-
-    return () => {
-      unsubscribe1();
-      unsubscribe2();
-    };
-  }, [userId, partnerId]);
-
-  // Notificações ficam unificadas em 'notifications'
-
   return {
     surprises,
     notifications,
-    dateConflict,
     partnerProfile,
     loading,
   };

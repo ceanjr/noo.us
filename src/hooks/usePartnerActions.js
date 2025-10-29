@@ -18,7 +18,7 @@ export const setProfileUpdater = (fn) => {
 };
 
 export function usePartnerActions(userId, profile, setModal, setProfile) {
-  const handleSendLinkInvite = async (partnerIdentifier, relationshipType = 'partner') => {
+  const handleSendLinkInvite = async (partnerIdentifier, relationshipType = 'partner', nickname = '', message = '') => {
     try {
       const usersRef = collection(db, 'users');
       let q;
@@ -33,7 +33,6 @@ export function usePartnerActions(userId, profile, setModal, setProfile) {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        showToast('Usuário não encontrado', 'error');
         return false;
       }
 
@@ -43,6 +42,23 @@ export function usePartnerActions(userId, profile, setModal, setProfile) {
 
       if (partnerId === userId) {
         showToast('Você não pode vincular com você mesmo!', 'error');
+        return false;
+      }
+
+      // Verificar se o usuário está bloqueado
+      const { isUserBlocked } = await import('../services/blockService');
+      const [isBlocked, hasBlockedYou] = await Promise.all([
+        isUserBlocked(userId, partnerId),
+        isUserBlocked(partnerId, userId)
+      ]);
+
+      if (isBlocked) {
+        showToast('Você bloqueou este usuário', 'error');
+        return false;
+      }
+
+      if (hasBlockedYou) {
+        showToast('Não é possível enviar convite para este usuário', 'error');
         return false;
       }
 
@@ -65,6 +81,7 @@ export function usePartnerActions(userId, profile, setModal, setProfile) {
       const myLinksRef = collection(db, 'users', userId, 'links');
       const alreadyLinkedQ = query(myLinksRef, where('partnerId', '==', partnerId));
       const alreadyLinkedSnap = await getDocs(alreadyLinkedQ);
+      
       if (!alreadyLinkedSnap.empty) {
         showToast('Vocês já estão vinculados', 'info');
         return false;
@@ -81,6 +98,8 @@ export function usePartnerActions(userId, profile, setModal, setProfile) {
         recipientId: partnerId,
         recipientName: partnerData.name,
         relationship,
+        nickname: nickname || '',
+        message: message || '',
         status: 'pending',
         createdAt: new Date().toISOString(),
       };

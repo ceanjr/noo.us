@@ -7,6 +7,7 @@ import {
   EmailAuthProvider,
 } from "firebase/auth";
 import { showToast } from "./Toast";
+import Avatar from "./Avatar";
 import {
   User,
   Camera,
@@ -216,39 +217,29 @@ export default function ProfileSettings({ profile, userId, onClose }) {
 
               <div className="text-center">
                 <div className="relative inline-block">
-                  <button
-                    type="button"
+                  <Avatar
+                    photoURL={photoURL}
+                    name={name}
+                    avatarBg={profile.avatarBg}
+                    size="2xl"
+                    shape="rounded"
                     onClick={handlePhotoClick}
                     disabled={uploadingPhoto}
-                    className="w-32 h-32 rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-4 mx-auto overflow-hidden hover:opacity-90 transition-opacity relative group disabled:cursor-not-allowed"
-                    style={{ backgroundColor: profile.avatarBg || undefined }}
-                  >
-                    {photoURL ? (
-                      <img
-                        src={photoURL}
-                        alt={name}
-                        className={
-                          photoURL.includes("/images/icons/")
-                            ? "w-full h-full object-contain p-3"
-                            : "w-full h-full object-cover"
-                        }
-                      />
-                    ) : (
-                      <User className="w-16 h-16" />
-                    )}
+                    className="mb-4 hover:opacity-90 transition-opacity relative group disabled:cursor-not-allowed"
+                    fallbackIcon={<User className="w-16 h-16" />}
+                  />
 
-                    {!uploadingPhoto && (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Camera className="w-8 h-8 text-white" />
-                      </div>
-                    )}
+                  {!uploadingPhoto && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl pointer-events-none">
+                      <Camera className="w-8 h-8 text-white" />
+                    </div>
+                  )}
 
-                    {uploadingPhoto && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                      </div>
-                    )}
-                  </button>
+                  {uploadingPhoto && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-2xl">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   Clique na foto para alterar

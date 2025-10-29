@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
@@ -18,6 +19,12 @@ import {
   updateLastLogin,
   loadUserProfile,
 } from './userService';
+import {
+  checkLoginLock,
+  recordFailedAttempt,
+  resetLoginAttempts,
+  formatLockoutTime,
+} from './loginAttemptService';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -168,6 +175,9 @@ export const googleSignIn = async (isSignup = false) => {
         throw new Error('Conta não encontrada');
       }
 
+      // Se não tiver foto do Google, usar avatar do app
+      const avatar = user.photoURL ? null : getAvatarForGender('neutral');
+      
       // Criar novo perfil
       await createUserProfile(user.uid, {
         name: user.displayName || 'Usuário',
@@ -175,10 +185,11 @@ export const googleSignIn = async (isSignup = false) => {
         phoneNumber: user.phoneNumber || '',
         passwordHash: '',
         partnerId: null,
-      partnerName: null,
-      authMethod: 'google',
-      photoURL: user.photoURL || '',
-    });
+        partnerName: null,
+        authMethod: 'google',
+        photoURL: user.photoURL || (avatar ? avatar.icon : ''),
+        avatarBg: avatar ? avatar.bg : '',
+      });
 
       showToast('Conta criada com sucesso! 💖', 'success');
     } else {
@@ -221,6 +232,12 @@ export const emailSignup = async ({
       password
     );
 
+    // Enviar email de verificação
+    await sendEmailVerification(userCredential.user, {
+      url: window.location.origin,
+      handleCodeInApp: true,
+    });
+
     const avatar = getAvatarForGender(gender);
     await createUserProfile(userCredential.user.uid, {
       name,
@@ -230,9 +247,10 @@ export const emailSignup = async ({
       gender,
       photoURL: avatar.icon,
       avatarBg: avatar.bg,
+      emailVerified: false,
     });
 
-    showToast('Conta criada com sucesso! 💖', 'success');
+    showToast('Conta criada! Verifique seu email para continuar. 📧', 'success');
     return userCredential.user;
   } catch (error) {
     let errorMessage = 'Erro ao criar conta';
@@ -258,6 +276,15 @@ export const emailSignup = async ({
  * @returns {Promise<Object>} Firebase user
  */
 export const emailLogin = async (email, password, rememberMe = true) => {
+  // Verificar se está bloqueado
+  const { isLocked, remainingTime } = checkLoginLock(email);
+  
+  if (isLocked) {
+    const timeFormatted = formatLockoutTime(remainingTime);
+    showToast(`Muitas tentativas falhas. Tente novamente em ${timeFormatted}`, 'error');
+    throw new Error('Account temporarily locked');
+  }
+
   try {
     await setPersistence(
       auth,
@@ -269,24 +296,47 @@ export const emailLogin = async (email, password, rememberMe = true) => {
       email,
       password
     );
+    
+    // Verificar se email foi verificado
+    if (!userCredential.user.emailVerified) {
+      await signOut(auth);
+      showToast('Por favor, verifique seu email antes de fazer login', 'warning');
+      throw new Error('Email not verified');
+    }
+    
+    // Login bem-sucedido, resetar tentativas
+    resetLoginAttempts(email);
+    
     await updateLastLogin(userCredential.user.uid);
     showToast('Bem-vindo de volta! 💕', 'success');
     return userCredential.user;
   } catch (error) {
-    let errorMessage = 'Erro ao fazer login';
+    // Não registrar tentativa se já está bloqueado ou email não verificado
+    if (error.message !== 'Account temporarily locked' && error.message !== 'Email not verified') {
+      let errorMessage = 'Erro ao fazer login';
 
-    if (
-      error.code === 'auth/user-not-found' ||
-      error.code === 'auth/wrong-password'
-    ) {
-      errorMessage = 'Email ou senha incorretos';
-    } else if (error.code === 'auth/too-many-requests') {
-      errorMessage = 'Muitas tentativas. Tente novamente mais tarde';
-    } else if (error.code === 'auth/user-disabled') {
-      errorMessage = 'Esta conta foi desativada';
+      if (
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/invalid-credential'
+      ) {
+        // Registrar tentativa falhada
+        const result = recordFailedAttempt(email);
+        
+        if (result.isLocked) {
+          errorMessage = `Muitas tentativas falhas. Conta bloqueada por 15 minutos`;
+        } else {
+          errorMessage = `Email ou senha incorretos (${result.attemptsRemaining} tentativas restantes)`;
+        }
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Muitas tentativas. Aguarde alguns minutos';
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = 'Esta conta foi desativada';
+      }
+
+      showToast(errorMessage, 'error');
     }
-
-    showToast(errorMessage, 'error');
+    
     throw error;
   }
 };

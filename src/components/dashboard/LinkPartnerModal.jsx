@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Send, Link as LinkIcon, Sparkles, ChevronDown } from 'lucide-react';
+import { X, Send, Link as LinkIcon, Sparkles, ChevronDown, AlertCircle } from 'lucide-react';
 
 /**
  * LinkPartnerModal - Modal para vincular parceiro
@@ -17,14 +17,33 @@ const RELATIONSHIP_OPTIONS = [
 export default function LinkPartnerModal({ onClose, onSubmit }) {
   const [partnerIdentifier, setPartnerIdentifier] = useState('');
   const [relationship, setRelationship] = useState('partner');
+  const [nickname, setNickname] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = await onSubmit(partnerIdentifier, relationship);
-    if (success) {
-      setPartnerIdentifier('');
-      setRelationship('partner');
-      onClose();
+    setError('');
+    setIsSubmitting(true);
+    
+    try {
+      const success = await onSubmit(partnerIdentifier, relationship, nickname, message);
+      
+      if (success) {
+        setPartnerIdentifier('');
+        setRelationship('partner');
+        setNickname('');
+        setMessage('');
+        onClose();
+      } else {
+        setError('Usuário não encontrado. Verifique se o email ou telefone está correto e se a pessoa já tem cadastro no app.');
+      }
+    } catch (err) {
+      console.error('Erro ao enviar convite:', err);
+      setError('Erro ao processar solicitação. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -56,11 +75,23 @@ export default function LinkPartnerModal({ onClose, onSubmit }) {
             <input
               type="text"
               value={partnerIdentifier}
-              onChange={(e) => setPartnerIdentifier(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+              onChange={(e) => {
+                setPartnerIdentifier(e.target.value);
+                setError('');
+              }}
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all ${
+                error ? 'border-red-500 focus:border-red-500' : 'border-theme focus:border-primary-500'
+              }`}
               placeholder="email@exemplo.com ou (11) 99999-9999"
               required
+              disabled={isSubmitting}
             />
+            {error && (
+              <div className="mt-2 p-3 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-bold text-theme-secondary mb-2">
@@ -83,6 +114,42 @@ export default function LinkPartnerModal({ onClose, onSubmit }) {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-bold text-theme-secondary mb-2">
+              Apelido (opcional)
+            </label>
+            <input
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+              placeholder="Ex: Amor, Mãe, Melhor amigo..."
+              maxLength={30}
+              disabled={isSubmitting}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Como você quer chamá-la(o) no app
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-theme-secondary mb-2">
+              Mensagem (opcional)
+            </label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-theme rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-none"
+              placeholder="Escreva uma mensagem para acompanhar o convite..."
+              rows={3}
+              maxLength={200}
+              disabled={isSubmitting}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {message.length}/200 caracteres
+            </p>
+          </div>
+
           <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
             <div className="flex items-start gap-2">
               <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -102,10 +169,11 @@ export default function LinkPartnerModal({ onClose, onSubmit }) {
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl hover:from-primary-600 hover:to-secondary-600 transition-all font-bold shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl hover:from-primary-600 hover:to-secondary-600 transition-all font-bold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-5 h-5" />
-              Enviar
+              {isSubmitting ? 'Enviando...' : 'Enviar'}
             </button>
           </div>
         </form>

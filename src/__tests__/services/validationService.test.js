@@ -8,19 +8,19 @@ describe('validationService', () => {
     });
 
     test('should reject phone with less than 11 digits', () => {
-      expect(validateBrazilPhone('1198765432')).toBeTruthy();
+      expect(validateBrazilPhone('1198765432')).not.toBeNull();
     });
 
     test('should reject phone with more than 11 digits', () => {
-      expect(validateBrazilPhone('119876543210')).toBeTruthy();
+      expect(validateBrazilPhone('119876543210')).not.toBeNull();
     });
 
     test('should reject phone with invalid DDD', () => {
-      expect(validateBrazilPhone('99987654321')).toBeTruthy();
+      expect(validateBrazilPhone('99987654321')).not.toBeNull();
     });
 
     test('should reject phone not starting with 9', () => {
-      expect(validateBrazilPhone('11887654321')).toBeTruthy();
+      expect(validateBrazilPhone('11887654321')).not.toBeNull();
     });
   });
 

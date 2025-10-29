@@ -2,52 +2,41 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function para verificar se é uma busca por email ou telefone
-    function isSearchingByCredential() {
-      return request.query.limit == 1 && 
-             (
-               (request.query.where != null && 
-                request.query.where[0][0] == 'email') ||
-               (request.query.where != null && 
-                request.query.where[0][0] == 'phoneNumber')
-             );
-    }
-    
-    // Regras para a coleção de usuários
+    // Regras para a coleÃ§Ã£o de usuÃ¡rios
     match /users/{userId} {
-      // Permitir criar conta (tanto autenticado quanto não autenticado para suportar cadastro)
+      // Permitir criar conta (tanto autenticado quanto nÃ£o autenticado para suportar cadastro)
       allow create: if (request.auth != null && request.auth.uid == userId)
                     || request.auth == null;
 
-      // Permitir ler o próprio perfil
+      // Permitir ler o prÃ³prio perfil
       allow read: if request.auth != null && request.auth.uid == userId;
 
-      // Permitir ler perfil do parceiro vinculado (via subcoleção links)
+      // Permitir ler perfil do parceiro vinculado
       allow read: if request.auth != null
-                  && exists(/databases/$(database)/documents/users/$(request.auth.uid)/links/$(userId));
+                  && resource.data.partnerId == request.auth.uid;
 
-      // Permitir buscar usuários APENAS por email ou telefone (para login e convites)
-      // Restrito a queries específicas, não permite leitura pública geral
-      allow read: if request.auth != null && isSearchingByCredential();
+      // Permitir buscar usuÃ¡rios por email ou telefone (necessÃ¡rio para login e convites)
+      // Permitir leitura pÃºblica para suportar login
+      allow read: if true;
 
-      // Permitir atualizar o próprio perfil
+      // Permitir atualizar o prÃ³prio perfil
       allow update: if request.auth != null && request.auth.uid == userId;
 
-      // Permitir atualizar perfil de outro usuário APENAS para vinculação
-      // quando está definindo partnerId para si mesmo (aceitar convite)
+      // Permitir atualizar perfil de outro usuÃ¡rio APENAS para vinculaÃ§Ã£o
+      // quando estÃ¡ definindo partnerId para si mesmo (aceitar convite)
       allow update: if request.auth != null
                     && request.resource.data.partnerId == request.auth.uid
                     && request.resource.data.partnerName is string
                     && request.resource.data.relationshipStart is string;
 
       // Permitir desvincular perfil do parceiro quando o documento do parceiro
-      // atualmente aponta para o usuário autenticado
+      // atualmente aponta para o usuÃ¡rio autenticado
       allow update: if request.auth != null
                     && resource.data.partnerId == request.auth.uid
                     && request.resource.data.partnerId == null
                     && request.resource.data.partnerName == null;
 
-      // Permitir deletar apenas se autenticado e for admin ou o próprio usuário
+      // Permitir deletar apenas se autenticado e for admin ou o prÃ³prio usuÃ¡rio
       allow delete: if request.auth != null && request.auth.uid == userId;
 
       // SubcoleÃ§Ã£o de vÃ­nculos (suporta mÃºltiplos vÃ­nculos por usuÃ¡rio)
@@ -66,12 +55,6 @@ service cloud.firestore {
 
         // Permitir deletar o link tanto pelo dono do doc quanto pelo parceiro referido
         allow delete: if request.auth != null && (request.auth.uid == userId || resource.data.partnerId == request.auth.uid);
-      }
-
-      // Subcoleção de usuários bloqueados
-      match /blockedUsers/{blockedUserId} {
-        // Apenas o dono pode ler, criar e deletar seus bloqueios
-        allow read, create, delete: if request.auth != null && request.auth.uid == userId;
       }
     }
     
@@ -104,29 +87,26 @@ service cloud.firestore {
                     && resource.data.recipientId == request.auth.uid;
     }
 
-    // Regras para a coleção de notificações/convites
+    // Regras para a coleÃ§Ã£o de notificaÃ§Ãµes/convites
     match /notifications/{notificationId} {
-      // Permitir criar notificação se estiver autenticado
-      allow create: if request.auth != null;
+      // Permitir criar notificaÃ§Ã£o se estiver autenticado
+      allow create: if request.auth != null
+                    && request.resource.data.senderId == request.auth.uid;
 
-      // Permitir ler notificações recebidas (userId) OU enviadas (senderId)
+      // Permitir ler notificaÃ§Ãµes recebidas OU enviadas
       allow read: if request.auth != null
-                  && (resource.data.userId == request.auth.uid
-                      || resource.data.senderId == request.auth.uid
-                      || resource.data.recipientId == request.auth.uid);
+                  && (resource.data.recipientId == request.auth.uid
+                      || resource.data.senderId == request.auth.uid);
 
-      // Permitir atualizar notificações (aceitar, rejeitar, etc.)
+      // Permitir atualizar notificaÃ§Ãµes (aceitar, rejeitar, etc.)
       allow update: if request.auth != null
-                    && (resource.data.userId == request.auth.uid
-                        || resource.data.senderId == request.auth.uid
-                        || resource.data.recipientId == request.auth.uid);
+                    && (resource.data.recipientId == request.auth.uid
+                        || resource.data.senderId == request.auth.uid);
 
-      // Permitir deletar próprias notificações
-      // Permitir deletar proprias notificacoes
+      // Permitir deletar prÃ³prias notificaÃ§Ãµes
       allow delete: if request.auth != null
-                    && (resource.data.userId == request.auth.uid
-                        || resource.data.senderId == request.auth.uid
-                        || resource.data.recipientId == request.auth.uid);
+                    && (resource.data.recipientId == request.auth.uid
+                        || resource.data.senderId == request.auth.uid);
     }
 
     // Regras para conflitos de data

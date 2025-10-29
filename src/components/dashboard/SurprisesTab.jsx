@@ -2,11 +2,11 @@
 import HeroCounter from '../HeroCounter';
 import MomentOfDay from '../MomentOfDay';
 import TimelineSlider from '../TimelineSlider';
-import ConstellationView from '../ConstellationView';
+import MomentsGrid from '../MomentsGrid';
 import CreateMomentFAB from '../CreateMomentFAB';
 
 /**
- * SurprisesTab - Aba de Constellation Feed
+ * SurprisesTab - Aba de Moments Grid
  *
  * @param {Object} props
  * @param {number} props.daysTogether - Dias de relacionamento
@@ -91,7 +91,7 @@ export default function SurprisesTab({
           </p>
         </div>
       ) : (
-        <ConstellationView
+        <MomentsGrid
           moments={filteredMoments}
           onReact={onReact}
           isPrivateMode={isPrivateMode}

@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Users, Link as LinkIcon, X, Shield } from 'lucide-react';
+import { Users, Link as LinkIcon, X, Shield, ShieldOff } from 'lucide-react';
 import Modal from '../Modal';
+import Avatar from '../Avatar';
 import { useLinks } from '../../hooks/useLinks';
 import { auth, db } from '../../lib/firebase';
 import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { showToast } from '../Toast';
+import { blockUser } from '../../services/blockService';
+import BlockedUsersModal from './BlockedUsersModal';
 
 const RELATIONSHIP_LABELS = {
   partner: 'Parceiro(a)',
@@ -12,31 +15,17 @@ const RELATIONSHIP_LABELS = {
   friend: 'Amigo(a)',
 };
 
-const Avatar = ({ name, photoURL, avatarBg }) => (
-  <div
-    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg overflow-hidden"
-    style={{ backgroundColor: avatarBg || '#ccc' }}
-  >
-    {photoURL ? (
-      <img src={photoURL} alt={name} className="w-full h-full object-cover" />
-    ) : (
-      <span>{name?.[0] ?? '?'}</span>
-    )}
-  </div>
-);
-
 /**
  * VinculosTab - Gerenciamento de vínculos com parceiros (multi)
  *
  * @param {Object} props
  * @param {Object} props.profile - Perfil do usuário atual
  * @param {Function} props.onLinkPartner - Abre modal para vincular parceiro
- * @param {string} props.activePartnerId - partnerId do vínculo principal
- * @param {Function} props.onSetActiveLink - define vínculo principal
  */
-export default function VinculosTab({ profile, onLinkPartner, activePartnerId, onSetActiveLink }) {
+export default function VinculosTab({ profile, onLinkPartner }) {
   const { links } = useLinks();
   const [confirm, setConfirm] = useState({ open: false, link: null });
+  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
 
   const handleUnlink = async (link) => {
     const uid = auth.currentUser?.uid;
@@ -58,6 +47,17 @@ export default function VinculosTab({ profile, onLinkPartner, activePartnerId, o
     }
   };
 
+  const handleBlock = async (link) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid || !link) return;
+    
+    // Primeiro remove o vínculo
+    await handleUnlink(link);
+    
+    // Depois bloqueia o usuário
+    await blockUser(uid, link.partnerId, link.partnerName);
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-theme-secondary rounded-2xl shadow-lg p-6">
@@ -68,12 +68,21 @@ export default function VinculosTab({ profile, onLinkPartner, activePartnerId, o
             </div>
             <h2 className="text-xl font-bold text-theme-primary">Vínculos</h2>
           </div>
-          <button
-            onClick={onLinkPartner}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary-500 to-secondary-500 text-white font-semibold shadow hover:from-primary-600 hover:to-secondary-600 transition"
-          >
-            Vincular parceiro
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowBlockedUsers(true)}
+              className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold shadow transition flex items-center gap-2"
+            >
+              <ShieldOff className="w-4 h-4" />
+              Bloqueados
+            </button>
+            <button
+              onClick={onLinkPartner}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary-500 to-secondary-500 text-white font-semibold shadow hover:from-primary-600 hover:to-secondary-600 transition"
+            >
+              Vincular parceiro
+            </button>
+          </div>
         </div>
 
         {links && links.length > 0 ? (
@@ -85,7 +94,14 @@ export default function VinculosTab({ profile, onLinkPartner, activePartnerId, o
                   <div className="flex items-center gap-3">
                     <Avatar name={link.partnerName} photoURL={link.partnerPhotoURL} avatarBg={link.partnerAvatarBg} />
                     <div>
-                      <div className="font-semibold text-theme-primary">{link.partnerName}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-theme-primary">{link.partnerName}</span>
+                        {link.nickname && (
+                          <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                            "{link.nickname}"
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs font-medium text-theme-secondary mt-1">
                         Relação:{' '}
                         <span className="inline-block px-2 py-0.5 rounded-lg bg-primary-50 text-primary-600 border border-primary-100">
@@ -95,19 +111,14 @@ export default function VinculosTab({ profile, onLinkPartner, activePartnerId, o
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {activePartnerId === link.partnerId ? (
-                      <span className="px-3 py-1 rounded-lg bg-primary-100 text-primary-700 text-xs font-semibold">
-                        Principal
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => onSetActiveLink && onSetActiveLink(link)}
-                        className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-xs font-semibold text-theme-secondary"
-                        title="Tornar principal"
-                      >
-                        Tornar principal
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleBlock(link)}
+                      className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 transition text-xs font-semibold text-red-600 flex items-center gap-1"
+                      title="Bloquear usuário"
+                    >
+                      <ShieldOff className="w-4 h-4" />
+                      Bloquear
+                    </button>
                     <button
                       onClick={() => setConfirm({ open: true, link })}
                       className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition font-semibold text-theme-secondary flex items-center gap-2"
@@ -157,6 +168,13 @@ export default function VinculosTab({ profile, onLinkPartner, activePartnerId, o
         confirmText="Desvincular"
         onConfirm={() => handleUnlink(confirm.link)}
       />
+
+      {showBlockedUsers && (
+        <BlockedUsersModal
+          userId={auth.currentUser?.uid}
+          onClose={() => setShowBlockedUsers(false)}
+        />
+      )}
     </div>
   );
 }

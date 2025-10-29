@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, X, Heart, Check, Gift } from 'lucide-react';
+import Avatar from '../Avatar';
 
 /**
  * NotificationBell - Sino de notificações com dropdown (desktop) e modal (mobile)
@@ -70,24 +71,6 @@ export default function NotificationBell({
       default:
         return <Bell className="w-6 h-6 text-accent-500" />;
     }
-  };
-
-  const getNotificationAvatar = (n) => {
-    const photo = n.senderPhotoURL || n.senderPhoto || n.photoURL || '';
-    const bg = n.senderAvatarBg || n.avatarBg || '';
-    const isIcon = photo && photo.includes('/images/icons/');
-    if (photo) {
-      return (
-        <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-white" style={{ backgroundColor: bg || undefined }}>
-          <img src={photo} alt={n.senderName || 'Remetente'} className={`w-full h-full ${isIcon ? 'object-contain p-1' : 'object-cover'}`} />
-        </div>
-      );
-    }
-    return (
-      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center ring-2 ring-white">
-        {getNotificationIcon(n.type)}
-      </div>
-    );
   };
 
   const getTitle = (n) => {
@@ -167,7 +150,14 @@ export default function NotificationBell({
             >
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
-                  {getNotificationAvatar(notification)}
+                  <Avatar
+                    photoURL={notification.senderPhotoURL || notification.senderPhoto || notification.photoURL}
+                    name={notification.senderName}
+                    avatarBg={notification.senderAvatarBg || notification.avatarBg}
+                    ring={true}
+                    fallbackIcon={getNotificationIcon(notification.type)}
+                    className="bg-gray-100"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

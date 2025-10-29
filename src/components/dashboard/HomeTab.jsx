@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import trechos from '../../data/trechos.json';
 import MomentCard from '../MomentCard';
+import Avatar from '../Avatar';
 import DailyQuotePanel from './DailyQuotePanel';
 import NewSurprisesPanel from './NewSurprisesPanel';
 
@@ -58,21 +59,13 @@ export default function HomeTab({
       <div className="bg-theme-secondary rounded-2xl border border-border-color shadow-sm p-4 sm:p-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative flex-shrink-0">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden" style={{ backgroundColor: profile.avatarBg || undefined }}>
-              {profile.photoURL ? (
-                <img
-                  src={profile.photoURL}
-                  alt={profile.name}
-                  className="w-full h-full object-contain p-1"
-                />
-              ) : (
-                <img
-                  src="/images/icons/neutral.png"
-                  alt="Avatar"
-                  className="w-full h-full object-contain p-1"
-                />
-              )}
-            </div>
+            <Avatar
+              photoURL={profile.photoURL}
+              name={profile.name}
+              avatarBg={profile.avatarBg}
+              size="lg"
+              className="sm:w-20 sm:h-20"
+            />
             {hasPartner && (
               <div className="absolute -bottom-1 -right-1 bg-green-500 p-1 rounded-full">
                 <Heart className="w-3 h-3 text-white" fill="white" />

@@ -41,6 +41,8 @@ import EmailLoginForm from "./auth/EmailLoginForm";
 import PhoneLoginForm from "./auth/PhoneLoginForm";
 import PhoneVerification from "./auth/PhoneVerification";
 import ForgotPasswordModal from "./auth/ForgotPasswordModal";
+import EmailVerificationBanner from "./EmailVerificationBanner";
+import SMSLoadingSkeleton from "./auth/SMSLoadingSkeleton";
 import { loadUserProfile, ensureAvatarDefaults } from "../services/userService";
 
 export default function Auth() {
@@ -51,6 +53,7 @@ export default function Auth() {
   const {
     showVerificationStep,
     verificationCode,
+    isSendingSMS,
     setVerificationCode,
     sendVerification,
     verifyCode,
@@ -304,6 +307,17 @@ export default function Auth() {
   }
 
   if (user && profile) {
+    // Verificar se email precisa ser verificado (apenas para auth por email)
+    if (user.providerData?.[0]?.providerId === 'password' && !user.emailVerified) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full">
+            <EmailVerificationBanner user={user} onLogout={handleLogout} />
+          </div>
+        </div>
+      );
+    }
+    
     return <Dashboard profile={profile} userId={user?.uid} setModal={setModal} onLogout={handleLogout} />;
   }
 
@@ -391,14 +405,18 @@ export default function Auth() {
               </div>
               <div className="w-9" />
             </div>
-            <PhoneVerification
-              verificationCode={verificationCode}
-              setVerificationCode={setVerificationCode}
-              onSubmit={(e) => { e.preventDefault(); (step === 'signup' ? handleVerifySignupCode : handleVerifyLoginCode)(); }}
-              onResendCode={() => sendVerification(cleanPhone(step === 'signup' ? phoneNumber : loginPhone))}
-              phoneNumber={step === 'signup' ? phoneNumber : loginPhone}
-              formatPhoneDisplay={formatPhoneDisplay}
-            />
+            {isSendingSMS ? (
+              <SMSLoadingSkeleton />
+            ) : (
+              <PhoneVerification
+                verificationCode={verificationCode}
+                setVerificationCode={setVerificationCode}
+                onSubmit={(e) => { e.preventDefault(); (step === 'signup' ? handleVerifySignupCode : handleVerifyLoginCode)(); }}
+                onResendCode={() => sendVerification(cleanPhone(step === 'signup' ? phoneNumber : loginPhone))}
+                phoneNumber={step === 'signup' ? phoneNumber : loginPhone}
+                formatPhoneDisplay={formatPhoneDisplay}
+              />
+            )}
           </div>
         </div>
       )}

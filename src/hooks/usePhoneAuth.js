@@ -16,6 +16,7 @@ export function usePhoneAuth() {
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [showVerificationStep, setShowVerificationStep] = useState(false);
+  const [isSendingSMS, setIsSendingSMS] = useState(false);
 
   // Limpa o estado do hook quando o usuário desloga
   useEffect(() => {
@@ -58,6 +59,7 @@ export function usePhoneAuth() {
    * @returns {Promise<boolean>} True se enviado com sucesso
    */
   const sendVerification = async (phoneNumber) => {
+    setIsSendingSMS(true);
     try {
       // Garante que um novo verifier seja criado se necessário
       const verifier = setupRecaptcha();
@@ -70,6 +72,8 @@ export function usePhoneAuth() {
     } catch (error) {
       console.error('Erro ao enviar verificação:', error);
       return false;
+    } finally {
+      setIsSendingSMS(false);
     }
   };
 
@@ -114,6 +118,7 @@ export function usePhoneAuth() {
     // Estado
     showVerificationStep,
     verificationCode,
+    isSendingSMS,
 
     // Setters
     setVerificationCode,

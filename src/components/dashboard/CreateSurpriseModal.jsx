@@ -19,8 +19,9 @@ import CreateDateModal from './CreateDateModal';
  * @param {Function} props.onClose - Callback ao fechar modal
  * @param {Function} props.onSubmit - Callback ao submeter surpresa (surpriseData)
  * @param {string} props.userId - ID do usuário atual
+ * @param {string} props.recipientName - Nome do destinatário selecionado
  */
-export default function CreateSurpriseModal({ onClose, onSubmit, userId }) {
+export default function CreateSurpriseModal({ onClose, onSubmit, userId, recipientName }) {
   const [selectedType, setSelectedType] = useState(null);
 
   const getSurpriseIcon = (type) => {
@@ -83,13 +84,20 @@ export default function CreateSurpriseModal({ onClose, onSubmit, userId }) {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-theme-secondary rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in">
             <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary-500 p-2 rounded-xl">
-                  <Gift className="w-6 h-6 text-white" />
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="bg-primary-500 p-2 rounded-xl">
+                    <Gift className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                    Nova Surpresa
+                  </h3>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
-                  Nova Surpresa
-                </h3>
+                {recipientName && (
+                  <p className="text-sm text-gray-500 ml-14">
+                    Para: <span className="font-semibold text-primary-600">{recipientName}</span>
+                  </p>
+                )}
               </div>
               <button
                 onClick={onClose}

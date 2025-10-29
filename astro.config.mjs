@@ -7,6 +7,12 @@ export default defineConfig({
     build: {
       sourcemap: true,
     },
+    server: {
+      hmr: true,
+      watch: {
+        usePolling: false,
+      },
+    },
   },
   integrations: [react(), tailwind()],
   output: "static",
